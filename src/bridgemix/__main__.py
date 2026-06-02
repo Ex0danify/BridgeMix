@@ -11,7 +11,7 @@ from bridgemix.gui.main_window import MainWindow
 def main() -> None:
     app = QApplication(sys.argv)
     app.setApplicationName("BridgeMix")
-    app.setOrganizationName("SkyFire-Networks")
+    app.setOrganizationName("Ex0danify")
     # Wayland/KDE picks the taskbar icon by matching the window's app_id to an
     # installed .desktop file — the Qt window icon alone isn't used there. This
     # sets app_id to the reverse-DNS application id; it must match the Flatpak
