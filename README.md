@@ -85,20 +85,19 @@ This software was developed on an original Roland Brige Cast. The compatibility 
 ```bash
 git clone https://github.com/Ex0danify/BridgeMix.git
 cd BridgeMix
-./setup.sh
+./setup.sh          # Linux
+setup.bat        # Windows (double-click, or run in a terminal)
 ```
 
-*(On Windows the `setup.sh` menu doesn't apply — install with `pip install -e .`, then run `python -m bridgemix`.)*
-
-Run from a terminal, `setup.sh` shows a friendly keyboard menu (↑/↓, **Enter**):
+Run from a terminal, `setup.sh` (Linux) and `setup.bat` (Windows) show a friendly menu:
 
 | Option | What it does |
 |---|---|
-| **Install & Launch** | Sets things up, adds BridgeMix to your applications menu, and starts it |
+| **Install & Launch** | Sets things up, adds BridgeMix to your apps/Start menu, and starts it |
 | **Launch** | Starts BridgeMix without adding a menu entry |
-| **Uninstall** | Removes the applications-menu entry |
+| **Uninstall** | Removes the apps/Start-menu entry |
 
-Prefer flags? `./setup.sh --install` · `--launch` · `--uninstall`.
+Prefer flags? `--install` · `--launch` · `--uninstall` (works on both `./setup.sh` and `setup.bat`).
 
 It sets itself up automatically — a `bridgemix` conda env if you have conda, otherwise
 a self-contained Python venv (`.venv`). The first run downloads dependencies (about a
