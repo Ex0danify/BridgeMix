@@ -52,6 +52,7 @@ src/bridgemix/preset/game_eq_factory.py
 src/bridgemix/preset/game_eq_library.py
 src/bridgemix/preset/manager.py
 src/bridgemix/preset/roland_map.py
+tests/test_bridge_cast.py
 tests/test_detector.py
 tests/test_game_eq_library.py
 tests/test_parameters.py

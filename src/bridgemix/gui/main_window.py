@@ -22,16 +22,20 @@ from __future__ import annotations
 from pathlib import Path
 
 from PyQt6.QtCore import QEvent, Qt, QTimer
-from PyQt6.QtGui import QColor, QIcon, QPainter
+from PyQt6.QtGui import QAction, QColor, QIcon, QPainter
 from PyQt6.QtWidgets import (
+    QApplication,
     QFrame,
     QHBoxLayout,
     QLabel,
     QMainWindow,
+    QMenu,
+    QMessageBox,
     QPushButton,
     QSizePolicy,
     QStackedWidget,
     QStatusBar,
+    QSystemTrayIcon,
     QVBoxLayout,
     QWidget,
 )
@@ -95,10 +99,71 @@ class MainWindow(QMainWindow):
         self._bridge.status_message.connect(self._on_status)
         self._bridge.connected.connect(self._on_connected)
 
+        # Close-button behaviour. None until the user picks once per session;
+        # then "tray" or "quit" is reused for the rest of the session without
+        # asking again. _quitting bypasses the prompt when we close for real.
+        self._close_choice: str | None = None
+        self._quitting = False
+
         self._setup_ui()
+        self._setup_tray()
 
         # Auto-detect on startup
         QTimer.singleShot(300, self._auto_connect)
+
+    # ── System tray ─────────────────────────────────────────────────────────────
+
+    def _setup_tray(self) -> None:
+        self._tray: QSystemTrayIcon | None = None
+        if not QSystemTrayIcon.isSystemTrayAvailable():
+            return
+
+        tray = QSystemTrayIcon(self.windowIcon(), self)
+        tray.setToolTip("BridgeMix")
+
+        menu = QMenu()
+        show_action = QAction("Show BridgeMix", self)
+        show_action.triggered.connect(self._restore_from_tray)
+        quit_action = QAction("Quit", self)
+        quit_action.triggered.connect(self._quit_app)
+        menu.addAction(show_action)
+        menu.addSeparator()
+        menu.addAction(quit_action)
+        tray.setContextMenu(menu)
+        tray.activated.connect(self._on_tray_activated)
+        tray.show()
+        self._tray = tray
+
+    def _on_tray_activated(self, reason: QSystemTrayIcon.ActivationReason) -> None:
+        if reason in (
+            QSystemTrayIcon.ActivationReason.Trigger,
+            QSystemTrayIcon.ActivationReason.DoubleClick,
+        ):
+            self._restore_from_tray()
+
+    def _restore_from_tray(self) -> None:
+        self.showNormal()
+        self.raise_()
+        self.activateWindow()
+
+    def _minimize_to_tray(self) -> None:
+        self.hide()
+        if self._tray is not None:
+            self._tray.showMessage(
+                "BridgeMix",
+                "Still running in the tray. Click the icon to restore.",
+                QSystemTrayIcon.MessageIcon.Information,
+                3000,
+            )
+
+    def _quit_app(self) -> None:
+        self._quitting = True
+        # Closing a hidden window does not fire quitOnLastWindowClosed, and the
+        # tray icon keeps the event loop alive, so quit the app explicitly.
+        if self._tray is not None:
+            self._tray.hide()
+        self.close()
+        QApplication.quit()
 
     # ── UI setup ──────────────────────────────────────────────────────────────
 
@@ -286,6 +351,54 @@ class MainWindow(QMainWindow):
     def _on_status(self, msg: str) -> None:
         self._status_bar.showMessage(msg)
 
+    def _ask_close_behaviour(self) -> str:
+        """Prompt for close vs. minimise-to-tray; returns "quit", "tray" or "cancel"."""
+        box = QMessageBox(self)
+        box.setWindowTitle("Close BridgeMix")
+        box.setIcon(QMessageBox.Icon.Question)
+        box.setText("Close BridgeMix or keep it running in the system tray?")
+        box.setInformativeText("Your choice is remembered until you quit BridgeMix.")
+        tray_btn = box.addButton("Minimize to Tray", QMessageBox.ButtonRole.AcceptRole)
+        quit_btn = box.addButton("Close", QMessageBox.ButtonRole.DestructiveRole)
+        cancel_btn = box.addButton(QMessageBox.StandardButton.Cancel)
+        box.setDefaultButton(tray_btn)
+        box.exec()
+
+        clicked = box.clickedButton()
+        if clicked is tray_btn:
+            return "tray"
+        if clicked is quit_btn:
+            return "quit"
+        return "cancel"
+
     def closeEvent(self, event):  # type: ignore[override]
+        # A real quit (tray menu / "Close" choice) tears down and exits.
+        if self._quitting:
+            self._bridge.disconnect_device()
+            super().closeEvent(event)
+            return
+
+        # No tray available → nothing to minimise into; quit as before.
+        if self._tray is None:
+            self._bridge.disconnect_device()
+            super().closeEvent(event)
+            return
+
+        choice = self._close_choice
+        if choice is None:
+            choice = self._ask_close_behaviour()
+            if choice == "cancel":
+                event.ignore()
+                return
+            self._close_choice = choice
+
+        if choice == "tray":
+            event.ignore()
+            self._minimize_to_tray()
+            return
+
+        # choice == "quit"
         self._bridge.disconnect_device()
+        if self._tray is not None:
+            self._tray.hide()
         super().closeEvent(event)
