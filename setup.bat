@@ -205,7 +205,7 @@ rem ============================================================================
         "$s.TargetPath='%SCRIPT_DIR%\setup.bat';" ^
         "$s.Arguments='--launch';" ^
         "$s.WorkingDirectory='%SCRIPT_DIR%';" ^
-        "if('%_icon%' -ne ''){$s.IconLocation='%_icon%'};" ^
+        "if('%_icon%' -ne ''){$s.IconLocation='%_icon%,0'};" ^
         "$s.Description='Roland Bridge Cast controller';" ^
         "$s.Save()" >nul 2>&1
     if exist "%SHORTCUT%" (
