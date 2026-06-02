@@ -259,7 +259,11 @@ install_desktop_integration() {
     fi
     mkdir -p "$apps_dir" "$icons_dir"
     cp -f "$icon_src" "$icons_dir/$APP_ID.svg"
-    sed "s|@LAUNCHER@|$launcher|g" "$desktop_src" > "$desktop_dst"
+    # Plain string substitution (not sed) so a repo path containing |, & or \
+    # can't corrupt the substitution or the resulting .desktop file.
+    while IFS= read -r line; do
+        printf '%s\n' "${line//@LAUNCHER@/$launcher}"
+    done < "$desktop_src" > "$desktop_dst"
     update-desktop-database "$apps_dir" >/dev/null 2>&1 || true
     kbuildsycoca6 >/dev/null 2>&1 || kbuildsycoca5 >/dev/null 2>&1 || true
     echo "  ${GREEN}✓${RESET} Added BridgeMix to your apps menu"
