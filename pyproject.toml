@@ -25,6 +25,9 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = ["pytest>=7", "ruff"]
+# Optional REST API server (System ▸ Remote API). Lazily imported; the app runs
+# fine without these installed.
+api = ["fastapi>=0.110", "uvicorn>=0.27"]
 
 [tool.setuptools.packages.find]
 where = ["src"]

@@ -42,6 +42,7 @@ No custom driver needed: the Bridge Cast is USB-Audio-class compliant.
 | **Hardware** | Strip channel assignment · strip button actions · LED ring colours · HOT KEY button 1 |
 | **System** | LED brightness · phones gain · indicator type · mute display · SFX A/B volume |
 | **Tools** | Device auto-detect · JSON preset save / load · live MIDI monitor |
+| **Remote API** | Optional local REST API (read/set any parameter) · Swagger UI · for Stream Deck, OBS, scripts |
 
 ### Not implemented yet
 
@@ -112,6 +113,46 @@ minute); after that it's instant. Force a backend with `BRIDGEMIX_BACKEND=conda|
 1. Connect the Bridge Cast over USB.
 2. Open BridgeMix and click **Connect** — it auto-detects the MIDI ports.
 3. Tweak away; everything applies to the device live.
+
+## Remote API (REST)
+
+An **optional** local HTTP API lets third-party tools — Stream Deck, OBS, or your
+own scripts — read and set any device parameter. It is **off by default** and
+**bound to `127.0.0.1`** (loopback only; never exposed to the network).
+
+**Enable it** in the **Extras** tab → *Remote API (REST)*: tick **Enable REST API**
+and pick a port (default `8765`). The extra dependencies (`fastapi`, `uvicorn`)
+aren't part of the base install — if they're missing, the panel shows an
+**Install Dependencies** button that fetches them into the running environment.
+Prefer the command line? `pip install bridgemix[api]`.
+
+Once running, open the **interactive Swagger docs** at `http://127.0.0.1:8765/docs`
+(ReDoc at `/redoc`, raw schema at `/openapi.json`).
+
+> **Security.** The API is loopback-only and **unauthenticated** — anything that
+> can reach `127.0.0.1` can drive your mixer. To stop a web page in your browser
+> from quietly poking the local API, a built-in guard rejects requests with an
+> unexpected `Host` header (DNS-rebinding) or a cross-site `Origin` (CSRF). Local
+> tools that send neither (curl, Stream Deck) and the Swagger page itself are
+> unaffected. Treat the port as trusted-local only; don't bind it to a public
+> interface.
+
+| Method & path | Does |
+|---|---|
+| `GET /api/v1/status` | Connection status (connected, model, firmware) |
+| `GET /api/v1/parameters` | List every parameter with its range and current value |
+| `GET /api/v1/parameters/{name}` | Read one parameter |
+| `PUT /api/v1/parameters/{name}` | Set one parameter (`{"value": …}`) |
+| `GET /api/v1/state` | Flat `name → value` map of all cached values |
+
+```bash
+# Discover parameters
+curl http://127.0.0.1:8765/api/v1/parameters
+
+# Mute the stream mic channel (parameter names come from the list above)
+curl -X PUT http://127.0.0.1:8765/api/v1/parameters/st_mic_mute \
+     -H 'Content-Type: application/json' -d '{"value": 1}'
+```
 
 ## Disclaimer
 

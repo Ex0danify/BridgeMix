@@ -14,7 +14,8 @@ Layout:
   │ [CHAT FX]│  5: ChatFxPanel (de-esser + compressor)          │
   │ [OUTPUT] │  6: OutputPanel                                   │
   │ [SYSTEM] │  7: SystemPanel                                   │
-  │ [MIDI]   │  8: MidiMonitor                                   │
+  │ [EXTRAS] │  8: ExtrasPanel (host-side extras, e.g. REST API) │
+  │ [MIDI]   │  9: MidiMonitor                                   │
   └──────────┴───────────────────────────────────────────────────┘
 """
 from __future__ import annotations
@@ -71,9 +72,13 @@ class _DisconnectOverlay(QWidget):
         p.fillRect(self.rect(), QColor(10, 10, 12, 200))
         p.end()
 
+from bridgemix.api.gateway import BridgeGateway
+from bridgemix.api.server import ApiServer
+from bridgemix.api.settings import load_settings
 from bridgemix.device.bridge_cast import BridgeCast
 from bridgemix.midi.detector import find_device
 from bridgemix.gui.panels.home_page import HomePage
+from bridgemix.gui.panels.extras import ExtrasPanel
 from bridgemix.gui.panels.chat_fx_panel import ChatFxPanel
 from bridgemix.gui.panels.game_fx_panel import GameFxPanel
 from bridgemix.gui.panels.mic_fx_panel import MicFxPanel
@@ -102,6 +107,14 @@ class MainWindow(QMainWindow):
         self._bridge = BridgeCast(self)
         self._bridge.status_message.connect(self._on_status)
         self._bridge.connected.connect(self._on_connected)
+
+        # Optional REST API. The gateway marshals server-thread calls onto this
+        # (GUI) thread; the server is owned here so it stops cleanly on quit.
+        self._api_gateway = BridgeGateway(self._bridge, self)
+        self._api_server = ApiServer(self._api_gateway, self)
+        api_settings = load_settings()
+        if api_settings.enabled:
+            self._api_server.start(api_settings)
 
         # Close-button behaviour. None until the user picks once per session;
         # then "tray" or "quit" is reused for the rest of the session without
@@ -317,7 +330,8 @@ class MainWindow(QMainWindow):
             ("CHAT FX",   5),
             ("OUTPUT",    6),
             ("SYSTEM",    7),
-            ("MIDI MON", 8),
+            ("EXTRAS",    8),
+            ("MIDI MON", 9),
         ]
         for label, idx in pages:
             btn = QPushButton(label)
@@ -347,7 +361,8 @@ class MainWindow(QMainWindow):
         self._stack.addWidget(ChatFxPanel(b))     # 5 — chat de-esser + compressor
         self._stack.addWidget(OutputPanel(b))     # 6 — output routing
         self._stack.addWidget(SystemPanel(b))     # 7 — system settings
-        self._stack.addWidget(MidiMonitor(b))     # 8 — MIDI debug
+        self._stack.addWidget(ExtrasPanel(b, self._api_server))  # 8 — host-side extras
+        self._stack.addWidget(MidiMonitor(b))     # 9 — MIDI debug
 
         self._overlay = _DisconnectOverlay(self._stack)
         self._overlay.resize(self._stack.size())
@@ -428,6 +443,7 @@ class MainWindow(QMainWindow):
     def closeEvent(self, event):  # type: ignore[override]
         # A real quit (tray menu / "Close" choice) tears down and exits.
         if self._quitting:
+            self._api_server.stop()
             if self._routing_monitor is not None:
                 self._routing_monitor.stop()
             self._bridge.disconnect_device()
@@ -436,6 +452,7 @@ class MainWindow(QMainWindow):
 
         # No tray available → nothing to minimise into; quit as before.
         if self._tray is None:
+            self._api_server.stop()
             if self._routing_monitor is not None:
                 self._routing_monitor.stop()
             self._bridge.disconnect_device()
@@ -456,6 +473,7 @@ class MainWindow(QMainWindow):
             return
 
         # choice == "quit"
+        self._api_server.stop()
         if self._routing_monitor is not None:
             self._routing_monitor.stop()
         self._bridge.disconnect_device()
