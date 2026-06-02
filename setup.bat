@@ -118,13 +118,15 @@ rem ============================================================================
 
 :relink_check
     rem Keep the env pointed at THIS folder (handles a moved/renamed/cloned copy).
-    set "_expected=%SCRIPT_DIR%\src"
-    set "_current="
-    for /f "delims=" %%P in ('%PY% -c "import os,bridgemix;print(os.path.dirname(os.path.dirname(os.path.realpath(bridgemix.__file__))))" 2^>nul') do set "_current=%%P"
-    if /I not "%_current%"=="%_expected%" (
-        echo   Linking this copy...
-        %PIP% install -e "%SCRIPT_DIR%" >nul 2>&1
-    )
+    rem Compare entirely inside Python with os.path.normcase so both paths are
+    rem normalized the same way (case, slashes, 8.3 names) — otherwise a raw
+    rem batch string vs. a realpath() result almost never match and we'd relink
+    rem on every launch.
+    set "_need="
+    for /f "delims=" %%R in ('%PY% -c "import os,importlib.util as u;s=u.find_spec('bridgemix');cur=os.path.dirname(os.path.dirname(os.path.realpath(s.origin))) if s and s.origin else '';exp=os.path.realpath(r'%SCRIPT_DIR%\src');print('ok' if os.path.normcase(cur)==os.path.normcase(exp) else 'relink')" 2^>nul') do set "_need=%%R"
+    if /I "%_need%"=="ok" exit /b 0
+    echo   Linking this copy...
+    %PIP% install -e "%SCRIPT_DIR%" >nul 2>&1
     exit /b 0
 
 :find_conda
