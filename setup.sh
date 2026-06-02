@@ -58,6 +58,29 @@ run_step() {
     fi
 }
 
+# Like run_step but non-fatal: returns the command's exit code and leaves the
+# captured output in $STEP_LOG for the caller to inspect or show.
+STEP_LOG=""
+run_soft() {
+    local msg="$1"; shift
+    [[ -n "$STEP_LOG" ]] && rm -f "$STEP_LOG"
+    STEP_LOG="$(mktemp)"
+    if [[ ! -t 1 ]]; then echo "[bridgemix] $msg"; "$@" >"$STEP_LOG" 2>&1; return $?; fi
+    local spin='⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏' i=0
+    printf '  %s%s%s  ' "$DIM" "$msg" "$RESET"
+    ( "$@" ) >"$STEP_LOG" 2>&1 &
+    local pid=$!
+    while kill -0 "$pid" 2>/dev/null; do
+        printf '\b%s' "${spin:i++%${#spin}:1}"; sleep 0.1
+    done
+    if wait "$pid"; then printf '\b%s✓%s\n' "$GREEN" "$RESET"; return 0
+    else printf '\b%s✗%s\n' "$RED" "$RESET"; return 1; fi
+}
+
+show_step_error() {
+    echo "  ${RED}Something went wrong:${RESET}"; tail -n 25 "$STEP_LOG"
+}
+
 # ── Backend discovery ─────────────────────────────────────────────────────────
 
 find_conda() {
@@ -85,6 +108,81 @@ find_python() {
     return 1
 }
 
+# ── Build-tools handling (for compiling python-rtmidi on newer Pythons) ───────
+# python-rtmidi ships wheels for 3.11/3.12; on 3.13+ pip must compile it, which
+# needs a C compiler, ALSA dev headers and Python dev headers.
+
+# Best-effort check that the toolchain to build python-rtmidi is present.
+# $1 = the (system) python interpreter whose dev headers we'd compile against.
+have_build_tools() {
+    local py="$1" inc
+    command -v cc &>/dev/null || command -v gcc &>/dev/null || command -v clang &>/dev/null || return 1
+    [[ -f /usr/include/alsa/asoundlib.h ]] || return 1
+    inc="$("$py" -c 'import sysconfig; print(sysconfig.get_path("include"))' 2>/dev/null || true)"
+    [[ -n "$inc" && -f "$inc/Python.h" ]] || return 1
+    return 0
+}
+
+# Echo the distro's package-install command (sans sudo), or empty if unknown.
+# Detection is by package manager, so derivatives (Mint, Pop!_OS, Nobara,
+# Manjaro, EndeavourOS …) are covered by their base.
+build_tools_install_cmd() {
+    if   command -v apt-get      &>/dev/null; then echo "apt-get install -y build-essential python3-dev libasound2-dev"
+    elif command -v dnf          &>/dev/null; then echo "dnf install -y gcc make python3-devel alsa-lib-devel"
+    elif command -v yum          &>/dev/null; then echo "yum install -y gcc make python3-devel alsa-lib-devel"
+    elif command -v zypper       &>/dev/null; then echo "zypper install -y gcc make python3-devel alsa-devel"
+    elif command -v pacman       &>/dev/null; then echo "pacman -S --needed --noconfirm base-devel python alsa-lib"
+    elif command -v apk          &>/dev/null; then echo "apk add build-base python3-dev alsa-lib-dev"
+    elif command -v xbps-install &>/dev/null; then echo "xbps-install -Sy gcc make python3-devel alsa-lib-devel"
+    elif command -v eopkg        &>/dev/null; then echo "eopkg install -y -c system.devel alsa-lib-devel"
+    else echo ""
+    fi
+}
+
+# Explain the missing build tools and, interactively, offer to install them.
+offer_build_tools() {
+    local pyver="$1" cmd
+    cmd="$(build_tools_install_cmd)"
+    echo "" >&2
+    echo "  ${BOLD}python-rtmidi needs to be compiled${RESET} ${GRAY}(no prebuilt wheel for Python $pyver)${RESET}" >&2
+    echo "  ${GRAY}That needs a C compiler, ALSA dev headers and Python dev headers.${RESET}" >&2
+    if [[ -z "$cmd" ]]; then
+        echo "  ${GRAY}Couldn't recognise your package manager — install those three" >&2
+        echo "  with your distro's tools, then re-run setup.sh.${RESET}" >&2
+        return 0
+    fi
+    echo "  ${BOLD}Suggested:${RESET} ${GRAY}sudo $cmd${RESET}" >&2
+    if [[ -t 0 && -t 2 ]]; then
+        printf '  Install them now (uses sudo)? %s[Y/n]%s ' "$DIM" "$RESET" >&2
+        local ans=""; IFS= read -r ans || true
+        if [[ "${ans:-Y}" =~ ^[Nn] ]]; then
+            echo "  ${GRAY}Skipped — run the command above, then re-run setup.sh.${RESET}" >&2
+        else
+            echo "  ${GRAY}You may be prompted for your password…${RESET}" >&2
+            sudo sh -c "$cmd" || echo "  ${RED}Package install failed — see the output above.${RESET}" >&2
+        fi
+    else
+        echo "  ${GRAY}(non-interactive — run the command above, then re-run setup.sh)${RESET}" >&2
+    fi
+}
+
+# Install BridgeMix into the venv; if the build fails for want of tools, offer
+# to install them and retry once.
+install_into_venv() {
+    local py="$1" pyver="$2"
+    if run_soft "Installing BridgeMix…" "$VENV_DIR/bin/pip" install -e "$SCRIPT_DIR"; then
+        rm -f "$STEP_LOG"; return 0
+    fi
+    if ! have_build_tools "$py"; then
+        offer_build_tools "$pyver"
+        if run_soft "Building BridgeMix…" "$VENV_DIR/bin/pip" install -e "$SCRIPT_DIR"; then
+            rm -f "$STEP_LOG"; return 0
+        fi
+    fi
+    show_step_error; rm -f "$STEP_LOG"
+    exit 1
+}
+
 setup_conda() {
     local conda="$1"
     BACKEND="conda"
@@ -107,10 +205,6 @@ setup_venv() {
     local pyver
     pyver="$("$py" -c 'import sys; print("%d.%d" % sys.version_info[:2])' 2>/dev/null || echo '?')"
     BACKEND="venv"
-    if [[ "$pyver" != "3.11" && "$pyver" != "3.12" ]]; then
-        echo "  ${GRAY}note: python $pyver is untested; if install fails, install a C compiler" >&2
-        echo "        and ALSA headers (libasound2-dev / alsa-lib-devel) for python-rtmidi.${RESET}" >&2
-    fi
     if [[ ! -x "$VENV_DIR/bin/python" ]]; then
         echo "  ${BOLD}First-time setup${RESET} ${GRAY}(this can take a minute)${RESET}"
         if ! "$py" -m venv "$VENV_DIR" 2>/dev/null; then
@@ -119,7 +213,7 @@ setup_venv() {
             exit 1
         fi
         "$VENV_DIR/bin/python" -m pip install --upgrade pip >/dev/null 2>&1 || true
-        run_step "Installing BridgeMix…" "$VENV_DIR/bin/pip" install -e "$SCRIPT_DIR"
+        install_into_venv "$py" "$pyver"
     fi
     PY=("$VENV_DIR/bin/python")
     PIP=("$VENV_DIR/bin/pip")
