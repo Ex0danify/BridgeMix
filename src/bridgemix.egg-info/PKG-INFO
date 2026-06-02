@@ -1,0 +1,13 @@
+Metadata-Version: 2.4
+Name: bridgemix
+Version: 0.1.0
+Summary: Linux GUI controller for Roland Bridge Cast USB audio mixer
+Requires-Python: >=3.11
+Requires-Dist: PyQt6>=6.5
+Requires-Dist: mido>=1.3
+Requires-Dist: python-rtmidi>=1.5
+Requires-Dist: sounddevice>=0.4
+Requires-Dist: numpy>=1.24
+Provides-Extra: dev
+Requires-Dist: pytest>=7; extra == "dev"
+Requires-Dist: ruff; extra == "dev"

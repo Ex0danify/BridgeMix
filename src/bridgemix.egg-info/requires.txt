@@ -1,0 +1,9 @@
+PyQt6>=6.5
+mido>=1.3
+python-rtmidi>=1.5
+sounddevice>=0.4
+numpy>=1.24
+
+[dev]
+pytest>=7
+ruff

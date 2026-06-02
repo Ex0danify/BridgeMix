@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=BridgeMix
+GenericName=Bridge Cast Controller
+Comment=Control the Roland BRIDGE CAST audio mixer
+Exec=@LAUNCHER@
+Icon=io.github.ex0danify.BridgeMix
+Terminal=false
+Categories=AudioVideo;Audio;Mixer;
+Keywords=Roland;BridgeCast;Mixer;Audio;
+StartupWMClass=io.github.ex0danify.BridgeMix
