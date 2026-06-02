@@ -21,11 +21,12 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from PyQt6.QtCore import QEvent, Qt, QTimer
+from PyQt6.QtCore import QEasingCurve, QEvent, QPropertyAnimation, Qt, QTimer
 from PyQt6.QtGui import QAction, QColor, QIcon, QPainter
 from PyQt6.QtWidgets import (
     QApplication,
     QFrame,
+    QGraphicsBlurEffect,
     QHBoxLayout,
     QLabel,
     QMainWindow,
@@ -81,7 +82,10 @@ from bridgemix.gui.panels.mic_sfx_panel import MicSfxPanel
 from bridgemix.gui.panels.midi_monitor import MidiMonitor
 from bridgemix.gui.panels.output_panel import OutputPanel
 from bridgemix.gui.widgets.preset_bar import PresetBar
+from bridgemix.gui.panels.routing_panel import RoutingPanel
 from bridgemix.gui.panels.system_panel import SystemPanel
+from bridgemix.routing.backend import is_supported as routing_is_supported
+from bridgemix.routing.monitor import RoutingMonitor
 
 
 class MainWindow(QMainWindow):
@@ -89,7 +93,7 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.setWindowTitle("BridgeMix — Roland Bridge Cast Controller")
         self.setMinimumSize(960, 700)
-        self.resize(1080, 842)
+        self.resize(1088, 850)
 
         _icon = Path(__file__).parents[3] / "assets" / "icon.svg"
         if _icon.exists():
@@ -176,11 +180,33 @@ class MainWindow(QMainWindow):
 
         root.addWidget(self._make_header())
 
+        # Sidebar + content live in one wrapper so it can be blurred as a unit
+        # when the routing drawer opens (the drawer itself stays sharp).
+        self._main_area = QWidget()
+        main_lay = QHBoxLayout(self._main_area)
+        main_lay.setContentsMargins(0, 0, 0, 0)
+        main_lay.setSpacing(0)
+        main_lay.addWidget(self._make_sidebar())
+        main_lay.addWidget(self._make_content(), stretch=1)
+
         body = QHBoxLayout()
         body.setContentsMargins(0, 0, 0, 0)
         body.setSpacing(0)
-        body.addWidget(self._make_sidebar())
-        body.addWidget(self._make_content(), stretch=1)
+        body.addWidget(self._main_area, stretch=1)
+
+        # Application audio routing — independent of the MIDI connection, so it
+        # lives outside the disconnect overlay and runs whenever the app is open.
+        # Linux-only (PipeWire/PulseAudio); on Windows/macOS the OS handles this,
+        # so the panel is omitted entirely.
+        self._routing_monitor: RoutingMonitor | None = None
+        if routing_is_supported():
+            self._routing_monitor = RoutingMonitor(parent=self)
+            panel = RoutingPanel(self._routing_monitor)
+            panel.expandedChanged.connect(self._on_routing_expanded)
+            body.addWidget(panel)
+            self._routing_monitor.start()
+            self._setup_routing_blur()
+
         root.addLayout(body, stretch=1)
 
         self._status_bar = QStatusBar()
@@ -199,6 +225,34 @@ class MainWindow(QMainWindow):
         # Start with overlay visible; hidden once connected signal fires.
         self._overlay.show()
         self._overlay.raise_()
+
+    # ── Routing drawer blur ─────────────────────────────────────────────────────
+
+    def _setup_routing_blur(self) -> None:
+        """Blur the main area while the routing drawer is open, to set it apart."""
+        self._blur = QGraphicsBlurEffect(self)
+        self._blur.setBlurRadius(0.0)
+        self._blur.setEnabled(False)   # no render cost while collapsed
+        self._main_area.setGraphicsEffect(self._blur)
+
+        self._blur_anim = QPropertyAnimation(self._blur, b"blurRadius", self)
+        self._blur_anim.setDuration(190)   # matches the drawer slide
+        self._blur_anim.setEasingCurve(QEasingCurve.Type.InOutCubic)
+        self._blur_anim.finished.connect(self._on_blur_anim_finished)
+
+    def _on_routing_expanded(self, expanded: bool) -> None:
+        self._blur_anim.stop()
+        self._blur_anim.setStartValue(self._blur.blurRadius())
+        if expanded:
+            self._blur.setEnabled(True)
+            self._blur_anim.setEndValue(9.0)
+        else:
+            self._blur_anim.setEndValue(0.0)
+        self._blur_anim.start()
+
+    def _on_blur_anim_finished(self) -> None:
+        if self._blur.blurRadius() <= 0.01:
+            self._blur.setEnabled(False)
 
     # ── Header ────────────────────────────────────────────────────────────────
 
@@ -374,12 +428,16 @@ class MainWindow(QMainWindow):
     def closeEvent(self, event):  # type: ignore[override]
         # A real quit (tray menu / "Close" choice) tears down and exits.
         if self._quitting:
+            if self._routing_monitor is not None:
+                self._routing_monitor.stop()
             self._bridge.disconnect_device()
             super().closeEvent(event)
             return
 
         # No tray available → nothing to minimise into; quit as before.
         if self._tray is None:
+            if self._routing_monitor is not None:
+                self._routing_monitor.stop()
             self._bridge.disconnect_device()
             super().closeEvent(event)
             return
@@ -398,6 +456,8 @@ class MainWindow(QMainWindow):
             return
 
         # choice == "quit"
+        if self._routing_monitor is not None:
+            self._routing_monitor.stop()
         self._bridge.disconnect_device()
         if self._tray is not None:
             self._tray.hide()
