@@ -1,3 +1,5 @@
+LICENSE
+README.md
 pyproject.toml
 src/bridgemix/__init__.py
 src/bridgemix/__main__.py
@@ -34,6 +36,7 @@ src/bridgemix/gui/panels/midi_monitor.py
 src/bridgemix/gui/panels/output_panel.py
 src/bridgemix/gui/panels/system_panel.py
 src/bridgemix/gui/widgets/__init__.py
+src/bridgemix/gui/widgets/about_dialog.py
 src/bridgemix/gui/widgets/controls.py
 src/bridgemix/gui/widgets/eq_widget.py
 src/bridgemix/gui/widgets/input_strip.py

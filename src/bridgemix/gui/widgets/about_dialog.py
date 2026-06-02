@@ -81,10 +81,9 @@ class AboutDialog(QDialog):
         lay.addWidget(disclaimer)
 
         links = QLabel(
-            "<span style='color:#7a7a82;'>SkyFire-Networks</span>"
             "&nbsp;&nbsp;·&nbsp;&nbsp;"
             "<a style='color:#e05c12;text-decoration:none;' "
-            "href='https://github.com/Ex0danify/BridgeMix'>Source &amp; issues</a>"
+            "href='https://github.com/Ex0danify/BridgeMix'>Ex0danify</a>"
             "&nbsp;&nbsp;·&nbsp;&nbsp;"
             "<a style='color:#e05c12;text-decoration:none;' "
             "href='https://www.gnu.org/licenses/gpl-3.0.html'>License (GPL-3.0)</a>"
