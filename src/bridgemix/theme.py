@@ -199,6 +199,10 @@ QPushButton#btn_about:hover {
     background-color: rgba(255,255,255,0.08);
     color: #e8e8ea;
 }
+/* An update is available: tint the glyph the brand orange */
+QPushButton#btn_about[update="true"] {
+    color: #e05c12;
+}
 
 /* Connected: green status pill */
 QPushButton#btn_connect {

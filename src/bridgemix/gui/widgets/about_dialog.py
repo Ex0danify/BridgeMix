@@ -1,7 +1,6 @@
 """About dialog: version, trademark disclaimer, and license."""
 from __future__ import annotations
 
-from importlib.metadata import PackageNotFoundError, version as _pkg_version
 from pathlib import Path
 
 from PyQt6.QtCore import Qt
@@ -15,12 +14,7 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-
-def _app_version() -> str:
-    try:
-        return _pkg_version("bridgemix")
-    except PackageNotFoundError:
-        return "0.1.0"
+from bridgemix.updates import UpdateChecker, UpdateInfo, current_version as _app_version
 
 
 _DISCLAIMER = (
@@ -67,6 +61,17 @@ class AboutDialog(QDialog):
         head.addStretch()
         lay.addLayout(head)
 
+        # Update status: filled in asynchronously once the check returns.
+        self._update_lbl = QLabel("Checking for updates…")
+        self._update_lbl.setTextFormat(Qt.TextFormat.RichText)
+        self._update_lbl.setOpenExternalLinks(True)
+        self._update_lbl.setStyleSheet("color:#7a7a82;font-size:11px;")
+        lay.addWidget(self._update_lbl)
+
+        self._checker = UpdateChecker(self)
+        self._checker.checked.connect(self._on_update_checked)
+        self._checker.start()
+
         desc = QLabel(
             "A Linux desktop controller for the Roland BRIDGE CAST USB audio mixer."
         )
@@ -99,3 +104,19 @@ class AboutDialog(QDialog):
         close_btn.clicked.connect(self.accept)
         btn_row.addWidget(close_btn)
         lay.addLayout(btn_row)
+
+    def _on_update_checked(self, info: object) -> None:
+        if not isinstance(info, UpdateInfo):
+            self._update_lbl.setText(
+                "<span style='color:#7a7a82;'>Couldn’t check for updates</span>"
+            )
+        elif info.available:
+            self._update_lbl.setText(
+                f"<span style='color:#e05c12;'>↑ Version {info.latest} available</span>"
+                f"&nbsp;&nbsp;<a style='color:#e05c12;text-decoration:none;' "
+                f"href='{info.url}'>Download</a>"
+            )
+        else:
+            self._update_lbl.setText(
+                "<span style='color:#5a9a5a;'>✓ You’re on the latest version</span>"
+            )

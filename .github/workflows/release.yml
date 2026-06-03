@@ -1,0 +1,149 @@
+name: Release
+
+# Manual, optional release pipeline. Triggered by hand from the Actions tab
+# (or `gh workflow run Release`). It bumps the version, moves the CHANGELOG's
+# [Unreleased] section under a dated version heading, commits + tags it, and
+# publishes a GitHub Release whose notes come from that changelog section — so
+# pyproject.toml, CHANGELOG.md and the released tag never drift. That lockstep is
+# what the in-app update check (src/bridgemix/updates.py) relies on: it compares
+# the installed pyproject version against the latest tag.
+on:
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: "Which part to increment (ignored when 'version' is set)"
+        type: choice
+        options: [patch, minor, major]
+        default: patch
+      version:
+        description: "Exact version, e.g. 1.2.0 (optional; overrides bump)"
+        type: string
+        default: ""
+
+permissions:
+  contents: write   # push the bump commit + create the tag and release
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # Read the current version from pyproject.toml, work out the next one, and
+      # write it back. Exposes the result as steps.ver.outputs.version.
+      - name: Compute and write the new version
+        id: ver
+        env:
+          BUMP: ${{ inputs.bump }}
+          OVERRIDE: ${{ inputs.version }}
+        run: |
+          python - <<'PY' >> "$GITHUB_OUTPUT"
+          import os, re, pathlib, sys
+
+          path = pathlib.Path("pyproject.toml")
+          text = path.read_text()
+          m = re.search(r'(?m)^(version\s*=\s*")(\d+)\.(\d+)\.(\d+)(")', text)
+          if not m:
+              sys.exit('Could not find a `version = "X.Y.Z"` line in pyproject.toml')
+
+          override = os.environ.get("OVERRIDE", "").strip().lstrip("vV")
+          if override:
+              if not re.fullmatch(r"\d+\.\d+\.\d+", override):
+                  sys.exit(f"Invalid version override {override!r} (need X.Y.Z)")
+              new = override
+          else:
+              major, minor, patch = (int(m.group(i)) for i in (2, 3, 4))
+              bump = os.environ["BUMP"]
+              if bump == "major":   major, minor, patch = major + 1, 0, 0
+              elif bump == "minor": minor, patch = minor + 1, 0
+              else:                 patch += 1
+              new = f"{major}.{minor}.{patch}"
+
+          path.write_text(text[:m.start()] + m.group(1) + new + m.group(5) + text[m.end():])
+          print(f"version={new}")
+          PY
+
+      # Pull the [Unreleased] notes out for the Release body, then stamp them
+      # under a dated heading and open a fresh empty [Unreleased].
+      - name: Roll CHANGELOG and extract release notes
+        env:
+          VERSION: ${{ steps.ver.outputs.version }}
+          NOTES_OUT: ${{ runner.temp }}/release-notes.md
+        run: |
+          python - <<'PY'
+          import os, re, pathlib, sys, datetime
+
+          version = os.environ["VERSION"]
+          notes_out = pathlib.Path(os.environ["NOTES_OUT"])
+          path = pathlib.Path("CHANGELOG.md")
+          text = path.read_text()
+
+          m = re.search(r'(?mi)^##\s*\[Unreleased\]\s*$', text)
+          if not m:
+              sys.exit("CHANGELOG.md: no '## [Unreleased]' heading found")
+
+          # Body = everything from after the heading line to the next '## [' or EOF.
+          start = m.end()
+          nxt = re.search(r'(?m)^##\s*\[', text[start:])
+          end = start + nxt.start() if nxt else len(text)
+          body = text[start:end].strip("\n")
+
+          # Refuse to publish an empty changelog section.
+          if not re.search(r'(?m)^\s*[-*]\s+\S', body):
+              sys.exit("CHANGELOG.md: [Unreleased] has no entries — add notes before releasing.")
+
+          notes_out.write_text(body + "\n")
+
+          # Rebuild the file: a fresh empty [Unreleased], then the dated release,
+          # then whatever came after (earlier releases), with tidy spacing.
+          skeleton = "## [Unreleased]\n\n### Added\n\n### Changed\n\n### Fixed\n\n"
+          stamped = f"## [{version}] - {datetime.date.today().isoformat()}"
+          result = f"{text[:m.start()]}{skeleton}{stamped}\n\n{body}\n"
+          after = text[end:]
+          if after.strip():
+              result += "\n" + after.lstrip("\n")
+          path.write_text(result)
+          PY
+
+          # Add a compare link when there's an earlier tag to diff against.
+          prev="$(git tag --sort=-v:refname | head -n1)"
+          if [ -n "$prev" ]; then
+            printf '\n**Full Changelog**: https://github.com/%s/compare/%s...v%s\n' \
+              "${{ github.repository }}" "$prev" "$VERSION" >> "$NOTES_OUT"
+          fi
+
+      # Don't clobber an already-published version.
+      - name: Guard against an existing tag
+        run: |
+          tag="v${{ steps.ver.outputs.version }}"
+          if git ls-remote --exit-code --tags origin "refs/tags/$tag" >/dev/null 2>&1; then
+            echo "::error::Tag $tag already exists — pick a different version or bump."
+            exit 1
+          fi
+
+      - name: Commit, tag and push
+        run: |
+          version="${{ steps.ver.outputs.version }}"
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -am "Release v$version"
+          git tag -a "v$version" -m "BridgeMix v$version"
+          git push origin HEAD "refs/tags/v$version"
+
+      - name: Create the GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version="${{ steps.ver.outputs.version }}"
+          gh release create "v$version" \
+            --title "BridgeMix v$version" \
+            --notes-file "${{ runner.temp }}/release-notes.md" \
+            --verify-tag

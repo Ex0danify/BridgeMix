@@ -1,0 +1,87 @@
+name: Changelog
+
+# Enforce a changelog entry on every pull request into master/main. If the PR
+# touches user-facing source, it must also add a bullet under CHANGELOG.md's
+# [Unreleased] section — that's what keeps release notes consistent and complete
+# (the release workflow publishes exactly that section). Label the PR
+# `skip-changelog` to bypass the check for changes that need no note (docs, CI,
+# pure refactors, tests).
+#
+# To make this actually block merges, mark the "changelog" check as required in
+# Settings ▸ Branches ▸ branch protection for master.
+on:
+  pull_request:
+    branches: [main, master]
+    types: [opened, synchronize, reopened, labeled, unlabeled]
+
+jobs:
+  changelog:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # need base + head history to diff the PR
+
+      - name: Require a CHANGELOG [Unreleased] entry
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          LABELS: ${{ toJSON(github.event.pull_request.labels.*.name) }}
+        run: |
+          python - <<'PY'
+          import json, os, re, subprocess, sys
+
+          if "skip-changelog" in json.loads(os.environ["LABELS"]):
+              print("`skip-changelog` label present — skipping the check.")
+              sys.exit(0)
+
+          base, head = os.environ["BASE_SHA"], os.environ["HEAD_SHA"]
+
+          def git(*args):
+              return subprocess.run(["git", *args], capture_output=True, text=True)
+
+          changed = git("diff", "--name-only", f"{base}...{head}").stdout.split()
+
+          # Which changes warrant a user-facing changelog note.
+          def is_source(p):
+              if p in ("setup.sh", "setup.bat"):
+                  return True
+              return (
+                  p.startswith("src/")
+                  and ".egg-info/" not in p
+                  and "__pycache__" not in p
+              )
+
+          source_changed = [p for p in changed if is_source(p)]
+          if not source_changed:
+              print("No user-facing source changes — changelog entry not required.")
+              sys.exit(0)
+
+          def unreleased(text):
+              m = re.search(r'(?mi)^##\s*\[Unreleased\]\s*$', text)
+              if not m:
+                  return None
+              start = m.end()
+              nxt = re.search(r'(?m)^##\s*\[', text[start:])
+              end = start + nxt.start() if nxt else len(text)
+              return text[start:end].strip()
+
+          before = unreleased(git("show", f"{base}:CHANGELOG.md").stdout)
+          after = unreleased(git("show", f"{head}:CHANGELOG.md").stdout)
+
+          if after is None:
+              print("::error::CHANGELOG.md has no '## [Unreleased]' section.")
+              sys.exit(1)
+          if after == (before or ""):
+              print(
+                  "::error::Source files changed but CHANGELOG.md [Unreleased] "
+                  "wasn't updated. Add a bullet under [Unreleased], or label this "
+                  "PR `skip-changelog`."
+              )
+              print("Source files in this PR:")
+              for p in source_changed:
+                  print(f"  - {p}")
+              sys.exit(1)
+
+          print("CHANGELOG [Unreleased] updated — thanks!")
+          PY
