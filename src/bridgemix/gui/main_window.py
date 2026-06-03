@@ -234,6 +234,13 @@ class MainWindow(QMainWindow):
         about_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         about_btn.clicked.connect(self._show_about)
         self._status_bar.addPermanentWidget(about_btn)
+        self._about_btn = about_btn
+
+        # Quietly check for a newer release; tint the ⓘ button if one exists.
+        from bridgemix.updates import UpdateChecker
+        self._update_checker = UpdateChecker(self)
+        self._update_checker.checked.connect(self._on_update_checked)
+        self._update_checker.start()
 
         # Start with overlay visible; hidden once connected signal fires.
         self._overlay.show()
@@ -309,6 +316,16 @@ class MainWindow(QMainWindow):
     def _show_about(self) -> None:
         from bridgemix.gui.widgets.about_dialog import AboutDialog
         AboutDialog(self).exec()
+
+    def _on_update_checked(self, info: object) -> None:
+        from bridgemix.updates import UpdateInfo
+        if not (isinstance(info, UpdateInfo) and info.available):
+            return
+        self._about_btn.setToolTip(f"Update available: version {info.latest}")
+        self._about_btn.setProperty("update", "true")
+        # Re-evaluate the QSS so the new property takes effect.
+        self._about_btn.style().unpolish(self._about_btn)
+        self._about_btn.style().polish(self._about_btn)
 
     # ── Sidebar ───────────────────────────────────────────────────────────────
 
