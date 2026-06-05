@@ -13,10 +13,7 @@ file always stays in lockstep with the published releases.
 ## [Unreleased]
 
 ### Added
-
-### Changed
-
-### Fixed
+- Add automatic app update via git-release tags.
 
 ## [1.1.0] - 2026-06-05
 
