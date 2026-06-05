@@ -14,6 +14,7 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
+from bridgemix.selfupdate import SelfUpdater, can_self_update, escape as _esc
 from bridgemix.updates import UpdateChecker, UpdateInfo, current_version as _app_version
 
 
@@ -62,11 +63,23 @@ class AboutDialog(QDialog):
         lay.addLayout(head)
 
         # Update status: filled in asynchronously once the check returns.
+        update_row = QHBoxLayout()
+        update_row.setSpacing(10)
         self._update_lbl = QLabel("Checking for updates…")
         self._update_lbl.setTextFormat(Qt.TextFormat.RichText)
         self._update_lbl.setOpenExternalLinks(True)
         self._update_lbl.setStyleSheet("color:#7a7a82;font-size:11px;")
-        lay.addWidget(self._update_lbl)
+        update_row.addWidget(self._update_lbl)
+        update_row.addStretch()
+        # Shown only when an in-place update is both available and possible.
+        self._update_btn = QPushButton("Update now")
+        self._update_btn.clicked.connect(self._start_update)
+        self._update_btn.hide()
+        update_row.addWidget(self._update_btn)
+        lay.addLayout(update_row)
+
+        self._info: UpdateInfo | None = None
+        self._updater: SelfUpdater | None = None
 
         self._checker = UpdateChecker(self)
         self._checker.checked.connect(self._on_update_checked)
@@ -100,9 +113,9 @@ class AboutDialog(QDialog):
 
         btn_row = QHBoxLayout()
         btn_row.addStretch()
-        close_btn = QPushButton("Close")
-        close_btn.clicked.connect(self.accept)
-        btn_row.addWidget(close_btn)
+        self._close_btn = QPushButton("Close")
+        self._close_btn.clicked.connect(self.accept)
+        btn_row.addWidget(self._close_btn)
         lay.addLayout(btn_row)
 
     def _on_update_checked(self, info: object) -> None:
@@ -110,13 +123,45 @@ class AboutDialog(QDialog):
             self._update_lbl.setText(
                 "<span style='color:#7a7a82;'>Couldn’t check for updates</span>"
             )
-        elif info.available:
-            self._update_lbl.setText(
-                f"<span style='color:#e05c12;'>↑ Version {info.latest} available</span>"
-                f"&nbsp;&nbsp;<a style='color:#e05c12;text-decoration:none;' "
-                f"href='{info.url}'>Download</a>"
-            )
-        else:
+            return
+        if not info.available:
             self._update_lbl.setText(
                 "<span style='color:#5a9a5a;'>✓ You’re on the latest version</span>"
             )
+            return
+
+        self._info = info
+        self._update_lbl.setText(
+            f"<span style='color:#e05c12;'>↑ Version {info.latest} available</span>"
+        )
+        if can_self_update():
+            # In-place upgrade is possible: offer the button instead of a link.
+            self._update_btn.show()
+        else:
+            # No git checkout / no git: fall back to the browser download.
+            self._update_lbl.setText(
+                self._update_lbl.text()
+                + f"&nbsp;&nbsp;<a style='color:#e05c12;text-decoration:none;' "
+                f"href='{info.url}'>Download</a>"
+            )
+
+    def _start_update(self) -> None:
+        if self._info is None or (self._updater is not None and self._updater.is_running):
+            return
+        self._update_btn.setEnabled(False)
+        self._close_btn.setEnabled(False)
+        self._update_lbl.setText(
+            "<span style='color:#7a7a82;'>Updating… this can take a minute.</span>"
+        )
+        self._updater = SelfUpdater(self._info.latest, self)
+        self._updater.finished.connect(self._on_update_finished)
+        self._updater.start()
+
+    def _on_update_finished(self, success: bool, message: str) -> None:
+        color = "#5a9a5a" if success else "#e05c12"
+        self._update_lbl.setText(f"<span style='color:{color};'>{_esc(message)}</span>")
+        self._close_btn.setEnabled(True)
+        if success:
+            self._update_btn.hide()
+        else:
+            self._update_btn.setEnabled(True)
