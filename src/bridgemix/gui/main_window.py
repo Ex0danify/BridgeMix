@@ -232,11 +232,13 @@ class MainWindow(QMainWindow):
         self._status_bar.addPermanentWidget(about_btn)
         self._about_btn = about_btn
 
-        # Quietly check for a newer release; tint the ⓘ button if one exists.
+        # Quietly check for a newer release on every startup; tint the ⓘ button
+        # if one exists. force=True hits the network each launch (rather than
+        # reusing the day-old cache), falling back to the cache only when offline.
         from bridgemix.updates import UpdateChecker
         self._update_checker = UpdateChecker(self)
         self._update_checker.checked.connect(self._on_update_checked)
-        self._update_checker.start()
+        self._update_checker.start(force=True)
 
         # Start with overlay visible; hidden once connected signal fires.
         self._overlay.show()
