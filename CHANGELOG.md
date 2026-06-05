@@ -14,9 +14,11 @@ file always stays in lockstep with the published releases.
 
 ### Added
 
+- Add manual update checking ability in the "about" dialog.
+
 ### Changed
 
-### Fixed
+- Force update check to run on startup. If network is down fallback to 24h cache.
 
 ## [1.2.0] - 2026-06-05
 
