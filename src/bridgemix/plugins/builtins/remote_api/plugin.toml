@@ -1,0 +1,11 @@
+id = "io.github.ex0danify.bridgemix.remote-api"
+name = "Remote API (REST)"
+version = "1.0.0"
+description = "Read and set device parameters over HTTP for third-party tools (Stream Deck, OBS, scripts)."
+maintainer = "BridgeMix"
+homepage = "https://github.com/ex0danify/BridgeMix"
+license = "GPL-3.0-or-later"
+entry_point = "plugin:RemoteApiPlugin"
+host_api = ">=1.0,<2.0"
+requires = ["fastapi>=0.110", "uvicorn>=0.27"]
+permissions = ["device.read", "device.write", "network"]

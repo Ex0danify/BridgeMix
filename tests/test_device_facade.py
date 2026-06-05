@@ -1,14 +1,5 @@
-"""Tests for the REST-API gateway (``bridgemix.api.gateway``).
+"""Tests for the device facade (``bridgemix.plugins.device.DeviceFacade``)."""
 
-Two concerns are covered:
-
-* **Validation** — unknown / read-only / out-of-range writes raise before any
-  device access, so these run without an event loop.
-* **Thread marshalling** — the core contract: a call made from a worker thread
-  must execute the device access on the GUI thread.  We drive it the way the
-  real server does (worker thread + pumped GUI event loop), because the gateway
-  uses a *queued* signal connection that only delivers while events are pumped.
-"""
 from __future__ import annotations
 
 import threading
@@ -16,8 +7,9 @@ import threading
 import pytest
 from PyQt6.QtCore import QObject, pyqtSignal
 
-from bridgemix.api.gateway import (
-    BridgeGateway,
+from bridgemix.plugins.device import (
+    DeviceFacade,
+    DeviceNotConnected,
     ParameterNotFound,
     ParameterOutOfRange,
     ParameterReadOnly,
@@ -28,6 +20,8 @@ from bridgemix.device.parameters import REGISTRY
 class StubBridge(QObject):
     """Minimal stand-in for BridgeCast's gateway-facing surface."""
 
+    connected = pyqtSignal(bool)
+    parameter_changed = pyqtSignal(str, int)
     device_info_updated = pyqtSignal(str, str)
 
     def __init__(self) -> None:
@@ -62,7 +56,7 @@ def _readonly_param() -> str | None:
 
 @pytest.fixture
 def gateway(qapp):
-    return BridgeGateway(StubBridge())
+    return DeviceFacade(StubBridge())
 
 
 # ── Validation (no event loop needed: raises before marshalling) ──────────────
@@ -116,7 +110,7 @@ def _call_from_worker(qapp, fn):
 
 def test_set_parameter_executes_on_gui_thread(qapp):
     bridge = StubBridge()
-    gw = BridgeGateway(bridge)
+    gw = DeviceFacade(bridge)
     name = _writable_param()
     target = REGISTRY[name].min_value
 
@@ -128,9 +122,50 @@ def test_set_parameter_executes_on_gui_thread(qapp):
     assert bridge.write_thread is threading.main_thread()
 
 
+def test_set_while_disconnected_raises(qapp):
+    bridge = StubBridge()
+    bridge._is_connected = False
+    gw = DeviceFacade(bridge)
+    name = _writable_param()
+
+    with pytest.raises(DeviceNotConnected):
+        _call_from_worker(qapp, lambda: gw.set_parameter(name, REGISTRY[name].min_value))
+
+    # The cached value must be left untouched — nothing was written.
+    assert bridge.state[name] == REGISTRY[name].default_value
+    assert bridge.write_thread is None
+
+
+def test_reads_while_disconnected_raise(qapp):
+    bridge = StubBridge()
+    bridge._is_connected = False
+    gw = DeviceFacade(bridge)
+    name = _writable_param()
+
+    # Every device-data read needs a connection; only status() is exempt.
+    with pytest.raises(DeviceNotConnected):
+        _call_from_worker(qapp, gw.list_parameters)
+    with pytest.raises(DeviceNotConnected):
+        _call_from_worker(qapp, lambda: gw.get_parameter(name))
+    with pytest.raises(DeviceNotConnected):
+        _call_from_worker(qapp, gw.state)
+    # status() still answers and reports the disconnection.
+    assert _call_from_worker(qapp, gw.status)["connected"] is False
+
+
+def test_get_unknown_precedes_disconnect(qapp):
+    # An unknown name is a validation error even when disconnected (raised before
+    # the marshalled connection check).
+    bridge = StubBridge()
+    bridge._is_connected = False
+    gw = DeviceFacade(bridge)
+    with pytest.raises(ParameterNotFound):
+        gw.get_parameter("not_a_real_param")
+
+
 def test_status_reflects_device_info(qapp):
     bridge = StubBridge()
-    gw = BridgeGateway(bridge)
+    gw = DeviceFacade(bridge)
     bridge.device_info_updated.emit("Roland Bridge Cast", "3.00")
 
     status = _call_from_worker(qapp, gw.status)
@@ -141,7 +176,7 @@ def test_status_reflects_device_info(qapp):
 
 
 def test_list_parameters_covers_registry(qapp):
-    gw = BridgeGateway(StubBridge())
+    gw = DeviceFacade(StubBridge())
     listed = _call_from_worker(qapp, gw.list_parameters)
     assert len(listed) == len(REGISTRY)
     assert {p["name"] for p in listed} == set(REGISTRY)

@@ -1,11 +1,5 @@
-"""End-to-end integration test for the REST API.
+"""End-to-end integration test for the REST API."""
 
-Exercises the seam the unit tests deliberately mock: a *real* uvicorn
-``ApiServer`` thread + the *real* ``BridgeGateway`` marshalling onto the Qt
-thread, hit over *real* HTTP. A worker thread makes the request while the test
-(main) thread pumps the Qt event loop, mirroring how the running app services
-gateway calls. Skipped cleanly without the optional ``api`` dependencies.
-"""
 from __future__ import annotations
 
 import json
@@ -20,13 +14,15 @@ from PyQt6.QtCore import QObject, pyqtSignal
 pytest.importorskip("fastapi")
 pytest.importorskip("uvicorn")
 
-from bridgemix.api.gateway import BridgeGateway  # noqa: E402
-from bridgemix.api.server import ApiServer  # noqa: E402
-from bridgemix.api.settings import ApiSettings  # noqa: E402
+from bridgemix.plugins.builtins.remote_api.server import ApiServer  # noqa: E402
+from bridgemix.plugins.device import DeviceFacade  # noqa: E402
+from bridgemix.plugins.builtins.remote_api.settings import ApiSettings  # noqa: E402
 from bridgemix.device.parameters import REGISTRY  # noqa: E402
 
 
 class StubBridge(QObject):
+    connected = pyqtSignal(bool)
+    parameter_changed = pyqtSignal(str, int)
     device_info_updated = pyqtSignal(str, str)
 
     def __init__(self) -> None:
@@ -93,8 +89,8 @@ def _put_json(url: str, body: dict):
 @pytest.fixture
 def live_server(qapp):
     bridge = StubBridge()
-    gateway = BridgeGateway(bridge)
-    bridge.device_info_updated.emit("Roland Bridge Cast", "3.00")  # after gateway connects
+    gateway = DeviceFacade(bridge)
+    bridge.device_info_updated.emit("Roland Bridge Cast", "3.00")  # after facade connects
     server = ApiServer(gateway)
     settings = ApiSettings(enabled=True, host="127.0.0.1", port=_free_port())
     assert server.start(settings) is True

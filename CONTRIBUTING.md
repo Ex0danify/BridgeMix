@@ -55,7 +55,7 @@ don't hand-roll byte arrays elsewhere.
 
 ## Submitting changes
 
-1. Branch off `main`.
+1. Branch off `master`.
 2. Keep changes focused; add tests for protocol/logic changes.
 3. Make sure `pytest` passes and `ruff check` is clean.
 4. Open a pull request describing **what** changed and, for protocol work,

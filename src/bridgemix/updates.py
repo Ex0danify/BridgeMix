@@ -1,13 +1,7 @@
 """Background check for newer GitHub releases.
 
-Dependency-free (``urllib`` only — no git, no ``requests``) so it works on any
-machine that can already run BridgeMix. The check runs off the UI thread and
-never raises into it: any network or parse failure simply means "no update
-info", and the app keeps working offline.
-
-The latest-release tag is fetched from the GitHub API and cached in
-``~/.cache/bridgemix/update_check.json``, so the network is hit at most once
-per :data:`_CHECK_INTERVAL`.
+The check runs off the UI thread and never raises into it:
+any network or parse failure simply means "no updateinfo", and the app keeps working offline.
 """
 from __future__ import annotations
 
@@ -18,10 +12,12 @@ import time
 import urllib.error
 import urllib.request
 from dataclasses import dataclass
-from importlib.metadata import PackageNotFoundError, version as _pkg_version
 from pathlib import Path
 
+from packaging.version import InvalidVersion, Version
 from PyQt6.QtCore import QObject, pyqtSignal
+
+from bridgemix import __version__
 
 log = logging.getLogger(__name__)
 
@@ -33,15 +29,15 @@ _CACHE_PATH = Path.home() / ".cache" / "bridgemix" / "update_check.json"
 _CHECK_INTERVAL = 24 * 60 * 60   # seconds between network checks
 _TIMEOUT = 5                     # seconds for the HTTP request
 
-_FALLBACK_VERSION = "0.1.0"
-
-
 def current_version() -> str:
-    """Installed BridgeMix version, or a sane fallback if metadata is missing."""
-    try:
-        return _pkg_version("bridgemix")
-    except PackageNotFoundError:
-        return _FALLBACK_VERSION
+    """Running BridgeMix version.
+
+    Reads ``bridgemix.__version__`` from the live source rather than installed
+    package metadata: the app runs from an editable (``pip install -e``) checkout
+    that isn't reinstalled on ``git pull``, so importlib.metadata would report a
+    stale, frozen-at-install version. The source literal is always current.
+    """
+    return __version__
 
 
 @dataclass(frozen=True)
@@ -57,30 +53,18 @@ class UpdateInfo:
         return _is_newer(self.latest, self.current)
 
 
-def _parse_version(text: str) -> tuple[int, ...]:
-    """Parse a tag like ``v1.2.3`` / ``1.2`` into a comparable int tuple.
-
-    Stops at the first non-numeric component, so a pre-release suffix
-    (``1.2.0-rc1``) compares as ``(1, 2, 0)``. Unparseable input → ``()``.
-    """
-    core = text.strip().lstrip("vV").split("-")[0].split("+")[0]
-    parts: list[int] = []
-    for piece in core.split("."):
-        if not piece.isdigit():
-            break
-        parts.append(int(piece))
-    return tuple(parts)
-
-
 def _is_newer(latest: str, current: str) -> bool:
-    """True if *latest* parses to a strictly higher version than *current*."""
-    lt, ct = _parse_version(latest), _parse_version(current)
-    if not lt:
+    """True if *latest* parses to a strictly higher version than *current*.
+
+    Uses :class:`packaging.version.Version` (already a dependency for the plugin
+    subsystem), so a leading ``v`` and pre-release suffixes are handled per PEP
+    440 — e.g. ``1.2.0rc1`` sorts below ``1.2.0``. Either tag being unparseable
+    is treated as "no update".
+    """
+    try:
+        return Version(latest) > Version(current)
+    except InvalidVersion:
         return False
-    n = max(len(lt), len(ct))
-    lt += (0,) * (n - len(lt))
-    ct += (0,) * (n - len(ct))
-    return lt > ct
 
 
 def _read_cache() -> dict | None:

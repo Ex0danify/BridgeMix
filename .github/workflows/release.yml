@@ -4,9 +4,13 @@ name: Release
 # (or `gh workflow run Release`). It bumps the version, moves the CHANGELOG's
 # [Unreleased] section under a dated version heading, commits + tags it, and
 # publishes a GitHub Release whose notes come from that changelog section — so
-# pyproject.toml, CHANGELOG.md and the released tag never drift. That lockstep is
+# the version, CHANGELOG.md and the released tag never drift. That lockstep is
 # what the in-app update check (src/bridgemix/updates.py) relies on: it compares
-# the installed pyproject version against the latest tag.
+# the running version against the latest tag.
+#
+# The single source of truth for the version is bridgemix.__version__ in
+# src/bridgemix/__init__.py (pyproject.toml derives it via a dynamic attr, and
+# the whole app imports it from there). This workflow rewrites that one literal.
 on:
   workflow_dispatch:
     inputs:
@@ -37,8 +41,9 @@ jobs:
         with:
           python-version: "3.12"
 
-      # Read the current version from pyproject.toml, work out the next one, and
-      # write it back. Exposes the result as steps.ver.outputs.version.
+      # Read the current version from src/bridgemix/__init__.py (the single
+      # source of truth), work out the next one, and write it back. Exposes the
+      # result as steps.ver.outputs.version.
       - name: Compute and write the new version
         id: ver
         env:
@@ -48,11 +53,11 @@ jobs:
           python - <<'PY' >> "$GITHUB_OUTPUT"
           import os, re, pathlib, sys
 
-          path = pathlib.Path("pyproject.toml")
+          path = pathlib.Path("src/bridgemix/__init__.py")
           text = path.read_text()
-          m = re.search(r'(?m)^(version\s*=\s*")(\d+)\.(\d+)\.(\d+)(")', text)
+          m = re.search(r'(?m)^(__version__\s*=\s*")(\d+)\.(\d+)\.(\d+)(")', text)
           if not m:
-              sys.exit('Could not find a `version = "X.Y.Z"` line in pyproject.toml')
+              sys.exit('Could not find a `__version__ = "X.Y.Z"` line in src/bridgemix/__init__.py')
 
           override = os.environ.get("OVERRIDE", "").strip().lstrip("vV")
           if override:
