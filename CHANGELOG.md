@@ -14,6 +14,14 @@ file always stays in lockstep with the published releases.
 
 ### Added
 
+### Changed
+
+### Fixed
+
+## [1.1.0] - 2026-06-05
+
+### Added
+
 - Plugin SDK and documentation (`doc/PLUGINS.md`): the Extras tab is now a
   plugin host with discovery, enable toggles, and dependency installation.
 - In-app update check: the About dialog (footer ⓘ button) reports whether a
