@@ -3,8 +3,7 @@ Lifecycle wrapper for the optional REST API server.
 
 Runs uvicorn in a background thread and exposes start/stop plus a Qt signal so
 the System panel can reflect state. ``fastapi``/``uvicorn`` are imported lazily
-inside :meth:`ApiServer.start`, so importing this module never pulls them in —
-the rest of the app keeps working when the ``api`` extra is not installed.
+inside :meth:`ApiServer.start`, so importing this module never pulls them in.
 """
 from __future__ import annotations
 
@@ -14,8 +13,8 @@ import time
 
 from PyQt6.QtCore import QObject, pyqtSignal
 
-from bridgemix.api.gateway import BridgeGateway
-from bridgemix.api.settings import ApiSettings
+from bridgemix.plugins.builtins.remote_api.settings import ApiSettings
+from bridgemix.plugins.device import DeviceFacade
 
 log = logging.getLogger(__name__)
 
@@ -40,7 +39,7 @@ class ApiServer(QObject):
     # on failure/stop.
     state_changed = pyqtSignal(bool, str)
 
-    def __init__(self, gateway: BridgeGateway, parent: QObject | None = None) -> None:
+    def __init__(self, gateway: DeviceFacade, parent: QObject | None = None) -> None:
         super().__init__(parent)
         self._gateway = gateway
         self._server = None          # uvicorn.Server while running
@@ -66,13 +65,13 @@ class ApiServer(QObject):
             return True
         if not dependencies_available():
             self.state_changed.emit(
-                False, "REST API dependencies missing — install bridgemix[api]."
+                False, "REST API dependencies (fastapi, uvicorn) are not installed."
             )
             return False
 
         import uvicorn
 
-        from bridgemix.api.app import create_app
+        from bridgemix.plugins.builtins.remote_api.app import create_app
 
         self._error = None
         self._host = settings.host

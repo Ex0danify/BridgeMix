@@ -4,7 +4,10 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "bridgemix"
-version = "0.1.0"
+# Single source of truth is bridgemix.__version__ (src/bridgemix/__init__.py),
+# which the Release workflow bumps. setuptools reads it statically below, so the
+# packaged metadata always matches the source — nothing to maintain by hand here.
+dynamic = ["version"]
 description = "Linux GUI controller for Roland Bridge Cast USB audio mixer"
 license = {text = "GPL-3.0-or-later"}
 classifiers = [
@@ -21,16 +24,31 @@ dependencies = [
     "python-rtmidi>=1.5",
     "sounddevice>=0.4",
     "numpy>=1.24",
+    "packaging>=21",   # plugin dependency version/conflict checks
 ]
 
 [project.optional-dependencies]
 dev = ["pytest>=7", "ruff"]
-# Optional REST API server (System ▸ Remote API). Lazily imported; the app runs
-# fine without these installed.
-api = ["fastapi>=0.110", "uvicorn>=0.27"]
+
+[tool.setuptools.dynamic]
+version = {attr = "bridgemix.__version__"}
+
+[tool.setuptools]
+# Don't auto-glob every tracked file under a package into the wheel — that would
+# sweep in each plugin's co-located tests/. Ship only the data declared below.
+include-package-data = false
 
 [tool.setuptools.packages.find]
 where = ["src"]
+# Only ship real packages (those with __init__.py), so a plugin's tests/ dir
+# (a namespace dir with no __init__.py) is not treated as a shippable package.
+namespaces = false
+
+# Ship every built-in plugin's manifest (plugin.toml) alongside its code; the
+# plugin manager discovers built-ins by reading these files from disk. The "*"
+# key applies to any package that has one, so new built-ins need no edit here.
+[tool.setuptools.package-data]
+"*" = ["plugin.toml"]
 
 [project.scripts]
 bridgemix = "bridgemix.__main__:main"
@@ -41,7 +59,11 @@ target-version = "py311"
 
 [tool.pytest.ini_options]
 pythonpath = ["src"]
-testpaths = ["tests"]
+# Global suite (app + plugin SDK) plus each built-in plugin's own co-located
+# tests/. importlib mode lets those same-named test dirs coexist without
+# __init__.py, which also keeps them out of the built wheel.
+addopts = "--import-mode=importlib"
+testpaths = ["tests", "src/bridgemix/plugins/builtins"]
 filterwarnings = [
     "ignore::DeprecationWarning",
 ]

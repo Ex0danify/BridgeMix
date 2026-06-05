@@ -14,6 +14,8 @@ file always stays in lockstep with the published releases.
 
 ### Added
 
+- Plugin SDK and documentation (`doc/PLUGINS.md`): the Extras tab is now a
+  plugin host with discovery, enable toggles, and dependency installation.
 - In-app update check: the About dialog (footer ⓘ button) reports whether a
   newer release is available and links to the download, and the button is
   tinted when an update exists. Dependency-free (no git required) and cached
@@ -24,4 +26,4 @@ file always stays in lockstep with the published releases.
 
 ### Changed
 
-### Fixed
+- Moved the REST API into a built-in plugin, along with its tests.

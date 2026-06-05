@@ -14,7 +14,7 @@ Layout:
   │ [CHAT FX]│  5: ChatFxPanel (de-esser + compressor)          │
   │ [OUTPUT] │  6: OutputPanel                                   │
   │ [SYSTEM] │  7: SystemPanel                                   │
-  │ [EXTRAS] │  8: ExtrasPanel (host-side extras, e.g. REST API) │
+  │ [PLUGINS]│  8: PluginsPanel (plugins host)                   │
   │ [MIDI]   │  9: MidiMonitor                                   │
   └──────────┴───────────────────────────────────────────────────┘
 """
@@ -72,13 +72,12 @@ class _DisconnectOverlay(QWidget):
         p.fillRect(self.rect(), QColor(10, 10, 12, 200))
         p.end()
 
-from bridgemix.api.gateway import BridgeGateway
-from bridgemix.api.server import ApiServer
-from bridgemix.api.settings import load_settings
+from bridgemix.plugins.device import DeviceFacade
+from bridgemix.plugins.manager import PluginManager
 from bridgemix.device.bridge_cast import BridgeCast
 from bridgemix.midi.detector import find_device
 from bridgemix.gui.panels.home_page import HomePage
-from bridgemix.gui.panels.extras import ExtrasPanel
+from bridgemix.gui.panels.plugins import PluginsPanel
 from bridgemix.gui.panels.chat_fx_panel import ChatFxPanel
 from bridgemix.gui.panels.game_fx_panel import GameFxPanel
 from bridgemix.gui.panels.mic_fx_panel import MicFxPanel
@@ -108,15 +107,13 @@ class MainWindow(QMainWindow):
         self._bridge.status_message.connect(self._on_status)
         self._bridge.connected.connect(self._on_connected)
 
-        # Optional REST API. The gateway marshals server-thread calls onto this
-        # (GUI) thread; the server is owned here so it stops cleanly on quit.
-        self._api_gateway = BridgeGateway(self._bridge, self)
-        self._api_server = ApiServer(self._api_gateway, self)
-        api_settings = load_settings()
-        if api_settings.enabled:
-            self._api_server.start(api_settings)
+        # Plugins: The DeviceFacade marshals plugin/worker-thread
+        # calls onto this (GUI) thread; the manager owns plugin lifecycles so they
+        # shut down cleanly on quit.
+        self._device_facade = DeviceFacade(self._bridge, self)
+        self._plugin_manager = PluginManager(self._device_facade, self)
 
-        # Close-button behaviour. None until the user picks once per session;
+        # Close-button behaviour: None until the user picks once per session;
         # then "tray" or "quit" is reused for the rest of the session without
         # asking again. _quitting bypasses the prompt when we close for real.
         self._close_choice: str | None = None
@@ -194,7 +191,7 @@ class MainWindow(QMainWindow):
         root.addWidget(self._make_header())
 
         # Sidebar + content live in one wrapper so it can be blurred as a unit
-        # when the routing drawer opens (the drawer itself stays sharp).
+        # when the routing drawer opens.
         self._main_area = QWidget()
         main_lay = QHBoxLayout(self._main_area)
         main_lay.setContentsMargins(0, 0, 0, 0)
@@ -209,8 +206,7 @@ class MainWindow(QMainWindow):
 
         # Application audio routing — independent of the MIDI connection, so it
         # lives outside the disconnect overlay and runs whenever the app is open.
-        # Linux-only (PipeWire/PulseAudio); on Windows/macOS the OS handles this,
-        # so the panel is omitted entirely.
+        # Linux-only (PipeWire/PulseAudio); on Windows/macOS the panel is omitted entirely.
         self._routing_monitor: RoutingMonitor | None = None
         if routing_is_supported():
             self._routing_monitor = RoutingMonitor(parent=self)
@@ -340,15 +336,15 @@ class MainWindow(QMainWindow):
         self._nav_btns: list[QPushButton] = []
         pages = [
             ("MIXER",     0),
-            ("MIC SET.", 1),
+            ("MIC SET.",  1),
             ("MIC FX",    2),
             ("VOICE FX",  3),
             ("GAME FX",   4),
             ("CHAT FX",   5),
             ("OUTPUT",    6),
             ("SYSTEM",    7),
-            ("EXTRAS",    8),
-            ("MIDI MON", 9),
+            ("PLUGINS",   8),
+            ("MIDI MON",  9),
         ]
         for label, idx in pages:
             btn = QPushButton(label)
@@ -378,7 +374,7 @@ class MainWindow(QMainWindow):
         self._stack.addWidget(ChatFxPanel(b))     # 5 — chat de-esser + compressor
         self._stack.addWidget(OutputPanel(b))     # 6 — output routing
         self._stack.addWidget(SystemPanel(b))     # 7 — system settings
-        self._stack.addWidget(ExtrasPanel(b, self._api_server))  # 8 — host-side extras
+        self._stack.addWidget(PluginsPanel(self._plugin_manager))  # 8 — plugins host
         self._stack.addWidget(MidiMonitor(b))     # 9 — MIDI debug
 
         self._overlay = _DisconnectOverlay(self._stack)
@@ -438,7 +434,7 @@ class MainWindow(QMainWindow):
         self._status_bar.showMessage(msg)
 
     def _ask_close_behaviour(self) -> str:
-        """Prompt for close vs. minimise-to-tray; returns "quit", "tray" or "cancel"."""
+        """Prompt for close vs. minimise-to-tray."""
         box = QMessageBox(self)
         box.setWindowTitle("Close BridgeMix")
         box.setIcon(QMessageBox.Icon.Question)
@@ -460,16 +456,16 @@ class MainWindow(QMainWindow):
     def closeEvent(self, event):  # type: ignore[override]
         # A real quit (tray menu / "Close" choice) tears down and exits.
         if self._quitting:
-            self._api_server.stop()
+            self._plugin_manager.shutdown_all()
             if self._routing_monitor is not None:
                 self._routing_monitor.stop()
             self._bridge.disconnect_device()
             super().closeEvent(event)
             return
 
-        # No tray available → nothing to minimise into; quit as before.
+        # No tray available → nothing to minimize into; quit as before.
         if self._tray is None:
-            self._api_server.stop()
+            self._plugin_manager.shutdown_all()
             if self._routing_monitor is not None:
                 self._routing_monitor.stop()
             self._bridge.disconnect_device()
@@ -490,7 +486,7 @@ class MainWindow(QMainWindow):
             return
 
         # choice == "quit"
-        self._api_server.stop()
+        self._plugin_manager.shutdown_all()
         if self._routing_monitor is not None:
             self._routing_monitor.stop()
         self._bridge.disconnect_device()

@@ -76,18 +76,18 @@ No custom driver needed: the Bridge Cast is USB-Audio-class compliant.
 </details>
 
 ## Install & Run
-This software was developed on an original Roland Brige Cast. The compatibility to the Bridge Cast X and BridgeCast ONE is not guaranteed.
-**Requirements**
+This software was developed on an original Roland Bridge Cast. The compatibility to the Bridge Cast X and BridgeCast ONE is not guaranteed.
 
-- **Linux** — or **Windows** (the app runs there too)
+**Requirements:**
+
 - A **Roland Bridge Cast** (original, V2) on **FW 3.00 (115)**
 - **Python 3.11+**, or conda
 
 ```bash
 git clone https://github.com/Ex0danify/BridgeMix.git
 cd BridgeMix
-./setup.sh          # Linux
-setup.bat        # Windows (double-click, or run in a terminal)
+./setup.sh       # Linux
+setup.bat        # Windows
 ```
 
 Run from a terminal, `setup.sh` (Linux) and `setup.bat` (Windows) show a friendly menu:
@@ -111,20 +111,27 @@ minute); after that it's instant. Force a backend with `BRIDGEMIX_BACKEND=conda|
 ## Using it
 
 1. Connect the Bridge Cast over USB.
-2. Open BridgeMix and click **Connect** — it auto-detects the MIDI ports.
+2. Open BridgeMix — it auto-detects the correct MIDI ports and connects to the device.
 3. Tweak away; everything applies to the device live.
 
-## Remote API (REST)
+## Plugins
+
+The **Extras** tab is a plugin host: drop a plugin folder into the plugins
+directory (shown in the panel), hit **Rescan**, and it adds its own card. Want to
+write one? See [`doc/PLUGINS.md`](doc/PLUGINS.md). The Remote API below is itself a
+built-in plugin and doubles as a complete worked example.
+
+### Remote API (REST)
 
 An **optional** local HTTP API lets third-party tools — Stream Deck, OBS, or your
 own scripts — read and set any device parameter. It is **off by default** and
 **bound to `127.0.0.1`** (loopback only; never exposed to the network).
 
 **Enable it** in the **Extras** tab → *Remote API (REST)*: tick **Enable REST API**
-and pick a port (default `8765`). The extra dependencies (`fastapi`, `uvicorn`)
-aren't part of the base install — if they're missing, the panel shows an
-**Install Dependencies** button that fetches them into the running environment.
-Prefer the command line? `pip install bridgemix[api]`.
+and pick a port (default `8765`). The dependencies (`fastapi`, `uvicorn`) aren't
+part of the base install — the plugin declares them, so if they're missing the
+panel shows an **Install dependencies** button that fetches them into the running
+environment.
 
 Once running, open the **interactive Swagger docs** at `http://127.0.0.1:8765/docs`
 (ReDoc at `/redoc`, raw schema at `/openapi.json`).
@@ -135,7 +142,7 @@ Once running, open the **interactive Swagger docs** at `http://127.0.0.1:8765/do
 > unexpected `Host` header (DNS-rebinding) or a cross-site `Origin` (CSRF). Local
 > tools that send neither (curl, Stream Deck) and the Swagger page itself are
 > unaffected. Treat the port as trusted-local only; don't bind it to a public
-> interface.
+> interface!
 
 | Method & path | Does |
 |---|---|

@@ -1,16 +1,8 @@
 """
 FastAPI application factory for the BridgeMix REST API.
 
-Routes are a thin shell over :class:`~bridgemix.api.gateway.BridgeGateway`; all
-device access is marshalled onto the GUI thread there. Handlers are defined with
-``def`` (not ``async def``) so FastAPI runs them in its worker threadpool, where
-blocking on the gateway's future is safe.
-
 Swagger UI is served at ``/docs`` and ReDoc at ``/redoc``; the raw OpenAPI schema
 lives at ``/openapi.json``.
-
-``fastapi`` is imported at module load, so import this module only after checking
-:func:`bridgemix.api.server.dependencies_available`.
 """
 from __future__ import annotations
 
@@ -18,8 +10,9 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
-from bridgemix.api.gateway import (
-    BridgeGateway,
+from bridgemix.plugins.device import (
+    DeviceFacade,
+    DeviceNotConnected,
     ParameterNotFound,
     ParameterOutOfRange,
     ParameterReadOnly,
@@ -32,6 +25,9 @@ API_DESCRIPTION = (
     "(Stream Deck, OBS, scripts).\n\n"
     "Parameter names are the same keys BridgeMix uses internally — call "
     "`GET /api/v1/parameters` to discover them along with their ranges.\n\n"
+    "**Device connection:** every endpoint except `GET /api/v1/status` needs a "
+    "connected device and returns `503` when none is — rather than serving stale "
+    "cached values. Poll `/status` to know whether the device is connected.\n\n"
     "**Security:** the server binds to loopback and is *unauthenticated*. A guard "
     "rejects requests with an unexpected `Host` header (DNS-rebinding) or a "
     "cross-site `Origin` (a web page trying to reach your local API), so only "
@@ -91,9 +87,16 @@ class SetParameter(BaseModel):
     value: int = Field(..., description="New value; must lie within [min, max].")
 
 
-def create_app(gateway: BridgeGateway, host: str = "127.0.0.1", port: int = 8765) -> FastAPI:
+def create_app(gateway: DeviceFacade, host: str = "127.0.0.1", port: int = 8765) -> FastAPI:
     app = FastAPI(title=API_TITLE, version=API_VERSION, description=API_DESCRIPTION)
     _install_origin_guard(app, host, port)
+
+    @app.exception_handler(DeviceNotConnected)
+    async def _device_offline(request: Request, exc: DeviceNotConnected) -> JSONResponse:
+        # Every device-data endpoint needs a live device; only /status answers
+        # without one. So a disconnected device is a 503 across the board, rather
+        # than serving stale cached values a client can't tell are stale.
+        return JSONResponse({"detail": "No device connected"}, status_code=503)
 
     @app.get("/api/v1/status", response_model=Status, tags=["device"],
              summary="Device connection status")
