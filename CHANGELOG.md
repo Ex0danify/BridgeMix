@@ -14,6 +14,14 @@ file always stays in lockstep with the published releases.
 
 ### Added
 
+### Changed
+
+### Fixed
+
+## [1.2.1] - 2026-06-05
+
+### Added
+
 - Add manual update checking ability in the "about" dialog.
 
 ### Changed
