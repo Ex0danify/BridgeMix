@@ -8,11 +8,13 @@ name = "bridgemix"
 # which the Release workflow bumps. setuptools reads it statically below, so the
 # packaged metadata always matches the source — nothing to maintain by hand here.
 dynamic = ["version"]
-description = "Linux GUI controller for Roland Bridge Cast USB audio mixer"
+description = "Cross-platform GUI controller for the Roland Bridge Cast USB audio mixer"
 license = {text = "GPL-3.0-or-later"}
 classifiers = [
     "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
     "Operating System :: POSIX :: Linux",
+    "Operating System :: Microsoft :: Windows",
+    "Operating System :: MacOS",
     "Environment :: X11 Applications :: Qt",
     "Intended Audience :: End Users/Desktop",
     "Topic :: Multimedia :: Sound/Audio",

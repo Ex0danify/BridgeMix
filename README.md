@@ -4,10 +4,12 @@
 
 # BridgeMix
 
-**A sleek, unofficial Linux controller for the Roland BRIDGE CAST audio mixer.**
+**A sleek, unofficial cross-platform controller for the Roland BRIDGE CAST audio mixer.**
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
-![Platform: Linux](https://img.shields.io/badge/platform-Linux-1793D1?logo=linux&logoColor=white)
+![Linux](https://img.shields.io/badge/Linux-1793D1?logo=linux&logoColor=white)
+![Windows](https://img.shields.io/badge/Windows-0078D6?logo=windows&logoColor=white)
+![macOS](https://img.shields.io/badge/macOS-000000?logo=apple&logoColor=white)
 ![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-3776AB?logo=python&logoColor=white)
 ![GUI: PyQt6](https://img.shields.io/badge/GUI-PyQt6-41CD52?logo=qt&logoColor=white)
 
@@ -22,10 +24,16 @@
 
 ## About
 
-The official Roland companion app is Windows/macOS only. **BridgeMix** brings full
-control of the Bridge Cast to Linux — mixes, mic FX, voice changer, game FX, output
+Roland's official companion app is closed-source and **Windows/macOS only — there's
+no Linux build at all**. **BridgeMix** is an open-source, cross-platform alternative:
+full control of the Bridge Cast — mixes, mic FX, voice changer, game FX, output
 routing, profiles and live metering — by speaking the device's MIDI SysEx protocol.
-No custom driver needed: the Bridge Cast is USB-Audio-class compliant.
+It's pure Python/PyQt6, so the same app runs on **Linux, Windows and macOS** with no
+custom driver: the Bridge Cast is USB-Audio-class compliant.
+
+It's **Linux-first** — that's where it's built and tested, and the one platform Roland
+leaves unserved — but everything runs just as well on Windows and macOS for anyone who
+wants a free, scriptable alternative to the stock app.
 
 ## Features
 
@@ -86,9 +94,13 @@ This software was developed on an original Roland Bridge Cast. The compatibility
 ```bash
 git clone https://github.com/Ex0danify/BridgeMix.git
 cd BridgeMix
-./setup.sh       # Linux
+./setup.sh       # Linux / macOS
 setup.bat        # Windows
 ```
+
+> **macOS** uses the same `./setup.sh` — it sets up the environment and launches the
+> app fine, but doesn't add a Dock/Launchpad entry (that integration is Linux- and
+> Windows-only for now). It's the least-tested of the three platforms; reports welcome.
 
 Run from a terminal, `setup.sh` (Linux) and `setup.bat` (Windows) show a friendly menu:
 

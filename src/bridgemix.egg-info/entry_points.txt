@@ -1,2 +1,0 @@
-[console_scripts]
-bridgemix = bridgemix.__main__:main
