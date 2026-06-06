@@ -71,6 +71,10 @@ class AboutDialog(QDialog):
         self._update_lbl.setStyleSheet("color:#7a7a82;font-size:11px;")
         update_row.addWidget(self._update_lbl)
         update_row.addStretch()
+        # Manual re-query: always available, forces a fresh network check.
+        self._check_btn = QPushButton("Check again")
+        self._check_btn.clicked.connect(self._recheck)
+        update_row.addWidget(self._check_btn)
         # Shown only when an in-place update is both available and possible.
         self._update_btn = QPushButton("Update now")
         self._update_btn.clicked.connect(self._start_update)
@@ -83,7 +87,9 @@ class AboutDialog(QDialog):
 
         self._checker = UpdateChecker(self)
         self._checker.checked.connect(self._on_update_checked)
-        self._checker.start()
+        # The startup check already refreshed the cache, so the dialog's initial
+        # check reuses it; "Check again" forces a fresh network query.
+        self._run_check()
 
         desc = QLabel(
             "A Linux desktop controller for the Roland BRIDGE CAST USB audio mixer."
@@ -118,7 +124,21 @@ class AboutDialog(QDialog):
         btn_row.addWidget(self._close_btn)
         lay.addLayout(btn_row)
 
+    def _run_check(self, force: bool = False) -> None:
+        """Kick off a version check, reflecting the in-progress state in the UI."""
+        self._check_btn.setEnabled(False)
+        self._update_btn.hide()
+        self._update_lbl.setText(
+            "<span style='color:#7a7a82;'>Checking for updates…</span>"
+        )
+        self._checker.start(force=force)
+
+    def _recheck(self) -> None:
+        self._info = None
+        self._run_check(force=True)
+
     def _on_update_checked(self, info: object) -> None:
+        self._check_btn.setEnabled(True)
         if not isinstance(info, UpdateInfo):
             self._update_lbl.setText(
                 "<span style='color:#7a7a82;'>Couldn’t check for updates</span>"
@@ -149,6 +169,7 @@ class AboutDialog(QDialog):
         if self._info is None or (self._updater is not None and self._updater.is_running):
             return
         self._update_btn.setEnabled(False)
+        self._check_btn.setEnabled(False)
         self._close_btn.setEnabled(False)
         self._update_lbl.setText(
             "<span style='color:#7a7a82;'>Updating… this can take a minute.</span>"
@@ -161,6 +182,7 @@ class AboutDialog(QDialog):
         color = "#5a9a5a" if success else "#e05c12"
         self._update_lbl.setText(f"<span style='color:{color};'>{_esc(message)}</span>")
         self._close_btn.setEnabled(True)
+        self._check_btn.setEnabled(True)
         if success:
             self._update_btn.hide()
         else:
