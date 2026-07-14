@@ -12,6 +12,14 @@ file always stays in lockstep with the published releases.
 
 ## [Unreleased]
 
+### Added
+
+### Changed
+
+### Fixed
+
+## [1.2.2] - 2026-07-14
+
 ### Fixed
 - Fix python detection in windows setup bat
 
