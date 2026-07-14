@@ -162,7 +162,7 @@ rem ============================================================================
             exit /b 1
         )
         echo   First-time setup ^(this can take a minute^)
-        %FOUND_PY% -m venv "%VENV_DIR%" || ( echo   Could not create the Python environment. & exit /b 1 )
+        !FOUND_PY! -m venv "%VENV_DIR%" || ( echo   Could not create the Python environment. & exit /b 1 )
         "%VENV_DIR%\Scripts\python.exe" -m pip install --upgrade pip >nul 2>&1
         echo   Installing %APP_NAME%...
         "%VENV_DIR%\Scripts\pip.exe" install -e "%SCRIPT_DIR%" || ( echo   Install failed. & exit /b 1 )
