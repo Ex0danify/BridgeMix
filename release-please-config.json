@@ -5,7 +5,7 @@
       "release-type": "simple",
       "package-name": "bridgemix",
       "include-component-in-tag": false,
-      "changelog-path": "CHANGELOG.md",
+      "skip-changelog": true,
       "extra-files": [
         {
           "type": "generic",

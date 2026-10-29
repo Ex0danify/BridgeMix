@@ -63,8 +63,7 @@ don't hand-roll byte arrays elsewhere.
    e.g. `fix(midi): reopen the port after unplug` or `feat(plugins): add a settings page`
    (types: feat, fix, perf, revert, refactor, docs, style, test, build, ci, chore; `!` before the
    colon marks a breaking change). PRs are squash-merged with that title, and release-please
-   builds the changelog and picks the next version from it. Don't edit `CHANGELOG.md` or
-   `__version__` by hand.
+   writes the release notes and picks the next version from it. Don't edit `__version__` by hand.
 5. Open a pull request describing **what** changed and, for protocol work,
    **how** you confirmed it (e.g. MIDI capture from the official app, observed
    device behaviour). Note your device model and firmware version.
