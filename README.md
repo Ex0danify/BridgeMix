@@ -120,6 +120,24 @@ minute); after that it's instant. Force a backend with `BRIDGEMIX_BACKEND=conda|
 > **“Run in Terminal”** to see the menu. Once installed, just launch BridgeMix from your
 > applications menu like any other app.
 
+### Flatpak (Linux)
+
+Each release has a `BridgeMix-<version>-linux-x86_64.flatpak` bundle, which runs without Python or any setup:
+
+```bash
+flatpak install --user BridgeMix-<version>-linux-x86_64.flatpak
+flatpak run io.github.ex0danify.BridgeMix
+```
+
+It needs the KDE runtime from [Flathub](https://flathub.org/setup). In the sandbox the in-app updater and the plugin
+dependency installer are off; install a newer bundle to update.
+
+### Windows and macOS builds
+
+Releases also have a Windows installer (`…-windows-x64-setup.exe`, plus a portable zip) and a macOS `.dmg` for Apple Silicon.
+Neither is code-signed, so Windows SmartScreen and macOS Gatekeeper warn on first launch: choose *Run anyway* on Windows, and
+right-click the app and choose *Open* on macOS.
+
 ## Using it
 
 1. Connect the Bridge Cast over USB.

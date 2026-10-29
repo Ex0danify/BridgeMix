@@ -73,3 +73,9 @@ CLAUDE.md
 GEMINI.md
 .cursor/
 .github/copilot-instructions.md
+
+# Flatpak builds
+.flatpak-builder/
+build-dir/
+repo/
+*.flatpak

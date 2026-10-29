@@ -1,0 +1,53 @@
+name: Build Flatpak x86_64
+
+# Builds the Flatpak from packaging/flatpak, runs the app once inside its sandbox, and bundles it as a single installable
+# .flatpak file. Shared by the release workflow (upload: true) and the PR gate in ci.yml (upload: false).
+on:
+  workflow_call:
+    inputs:
+      upload:
+        description: Upload the bundle as a build artifact
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  flatpak-x86_64:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    container:
+      image: ghcr.io/flathub-infra/flatpak-github-actions:kde-6.11
+      options: --privileged # flatpak-builder needs to set up its own sandbox
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .flatpak-builder
+          key: flatpak-${{ hashFiles('packaging/flatpak/**') }}
+          restore-keys: flatpak-
+      - name: Build
+        run: |
+          flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
+          flatpak-builder --disable-rofiles-fuse --install-deps-from=flathub --force-clean --repo=repo build-dir \
+            packaging/flatpak/io.github.ex0danify.BridgeMix.yaml
+      - name: Validate the metadata
+        run: |
+          appstreamcli validate --no-net packaging/flatpak/io.github.ex0danify.BridgeMix.metainfo.xml
+          desktop-file-validate build-dir/files/share/applications/io.github.ex0danify.BridgeMix.desktop
+      # The Qt platform plugin runs offscreen: the container has no display.
+      - name: Smoke-test the app inside the sandbox
+        run: flatpak build --env=QT_QPA_PLATFORM=offscreen build-dir bridgemix --smoke-test
+      - name: Bundle
+        run: |
+          version="$(flatpak build build-dir bridgemix --version | awk '{print $2}')"
+          mkdir -p out
+          flatpak build-bundle repo "out/BridgeMix-$version-linux-x86_64.flatpak" io.github.ex0danify.BridgeMix
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: ${{ inputs.upload }}
+        with:
+          name: flatpak-x86_64
+          path: out/*
+          if-no-files-found: error

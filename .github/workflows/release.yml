@@ -1,6 +1,6 @@
 name: Release assets
 
-# Release-please creates the v* tag and the GitHub release with the notes; this builds the Windows and macOS packages for that
+# Release-please creates the v* tag and the GitHub release with the notes; this builds the Windows, macOS and Flatpak packages for that
 # tag and attaches them to it, with checksums and a build provenance attestation. Run it by hand to just build them (the packages
 # are kept as run artifacts and nothing is published). The tag starts it because release-please runs with CI_PUSH_TOKEN.
 on:
@@ -23,9 +23,14 @@ jobs:
     with:
       upload: true
 
+  flatpak-x86_64:
+    uses: ./.github/workflows/build-flatpak.yml
+    with:
+      upload: true
+
   publish-release:
     if: startsWith(github.ref, 'refs/tags/v')
-    needs: [windows-x64, macos-arm64]
+    needs: [windows-x64, macos-arm64, flatpak-x86_64]
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
@@ -52,6 +57,11 @@ jobs:
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           pattern: '*-arm64'
+          path: release-assets
+          merge-multiple: true
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: '*-x86_64'
           path: release-assets
           merge-multiple: true
       - name: Checksums
