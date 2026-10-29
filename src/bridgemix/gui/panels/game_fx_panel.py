@@ -1,12 +1,12 @@
 """
 Game FX panel — Game Limiter, Virtual Surround, Game EQ.
 """
-from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from __future__ import annotations
 
 import json
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from PyQt6.QtCore import Qt, QTimer
 from PyQt6.QtWidgets import (
@@ -20,7 +20,6 @@ from PyQt6.QtWidgets import (
     QMessageBox,
     QRadioButton,
     QScrollArea,
-    QSizePolicy,
     QVBoxLayout,
     QWidget,
 )
@@ -34,13 +33,34 @@ from bridgemix.gui.widgets.profile_widget import ProfileWidget
 from bridgemix.gui.widgets.surround_canvas import SurroundCanvas
 from bridgemix.preset import game_eq_library as geq_lib
 
-
 # ── Value-format helpers ───────────────────────────────────────────────────────
 
 _LIM_RELEASE_MS = [
-    10, 12, 15, 20, 25, 30, 40, 50, 60, 80,
-    100, 125, 160, 200, 250, 320, 400, 500, 640, 800,
-    1000, 1250, 1600, 2500, 5000,
+    10,
+    12,
+    15,
+    20,
+    25,
+    30,
+    40,
+    50,
+    60,
+    80,
+    100,
+    125,
+    160,
+    200,
+    250,
+    320,
+    400,
+    500,
+    640,
+    800,
+    1000,
+    1250,
+    1600,
+    2500,
+    5000,
 ]
 
 
@@ -59,6 +79,7 @@ def _fmt_angle(v: int) -> str:
 
 # ── Angle slider row (label + slider + value label, writes via bridge method) ──
 
+
 class _AngleSlider(QWidget):
     """Slider row for a vsurround angle parameter.
 
@@ -71,17 +92,17 @@ class _AngleSlider(QWidget):
         self,
         label: str,
         param: str,
-        bridge: "BridgeCast",
+        bridge: BridgeCast,
         min_val: int,
         max_val: int,
         use_angle_method: bool = False,
         parent: QWidget | None = None,
     ) -> None:
         super().__init__(parent)
-        self._param  = param
+        self._param = param
         self._bridge = bridge
         self._use_angle_method = use_angle_method
-        self._block  = False
+        self._block = False
 
         from PyQt6.QtWidgets import QLabel as _QLabel
 
@@ -133,8 +154,9 @@ class _AngleSlider(QWidget):
 
 # ── Main panel ────────────────────────────────────────────────────────────────
 
+
 class GameFxPanel(QWidget):
-    def __init__(self, bridge: "BridgeCast", parent: QWidget | None = None) -> None:
+    def __init__(self, bridge: BridgeCast, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self._bridge = bridge
 
@@ -175,12 +197,26 @@ class GameFxPanel(QWidget):
         lay.setSpacing(6)
 
         lay.addWidget(ParamToggle("Enable", "game_limiter", self._bridge))
-        lay.addWidget(LabeledSlider(
-            "LEVEL", "game_limiter_level", self._bridge, 0, 25, _fmt_lim_level,
-        ))
-        lay.addWidget(LabeledSlider(
-            "RELEASE", "game_limiter_release", self._bridge, 0, 24, _fmt_lim_release,
-        ))
+        lay.addWidget(
+            LabeledSlider(
+                "LEVEL",
+                "game_limiter_level",
+                self._bridge,
+                0,
+                25,
+                _fmt_lim_level,
+            )
+        )
+        lay.addWidget(
+            LabeledSlider(
+                "RELEASE",
+                "game_limiter_release",
+                self._bridge,
+                0,
+                24,
+                _fmt_lim_release,
+            )
+        )
         lay.addStretch()
         return grp
 
@@ -210,14 +246,15 @@ class GameFxPanel(QWidget):
         )
         outer.addWidget(out_cap)
 
-        self._rb_phones   = QRadioButton("Phones")
+        self._rb_phones = QRadioButton("Phones")
         self._rb_speakers = QRadioButton("Speakers")
         bg = QButtonGroup(self)
-        bg.addButton(self._rb_phones,   0)
+        bg.addButton(self._rb_phones, 0)
         bg.addButton(self._rb_speakers, 1)
         self._vs_out_bg = bg
-        (self._rb_speakers if b.get_parameter("game_vsurround_output")
-         else self._rb_phones).setChecked(True)
+        (
+            self._rb_speakers if b.get_parameter("game_vsurround_output") else self._rb_phones
+        ).setChecked(True)
         # Connect after initial setChecked so _listen_w exists before signal fires
         bg.idToggled.connect(self._on_vs_output_selected)
 
@@ -236,25 +273,47 @@ class GameFxPanel(QWidget):
         sliders.setContentsMargins(0, 0, 0, 0)
         sliders.setSpacing(4)
 
-        sliders.addWidget(_AngleSlider(
-            "FRONT ANGLE", "game_vsurround_front_angle",
-            b, 1, 89, use_angle_method=False,
-        ))
-        sliders.addWidget(_AngleSlider(
-            "SURROUND ANGLE", "game_vsurround_surround_angle",
-            b, 91, 179, use_angle_method=True,
-        ))
-        sliders.addWidget(_AngleSlider(
-            "SURROUND BACK ANGLE", "game_vsurround_back_angle",
-            b, 91, 179, use_angle_method=True,
-        ))
+        sliders.addWidget(
+            _AngleSlider(
+                "FRONT ANGLE",
+                "game_vsurround_front_angle",
+                b,
+                1,
+                89,
+                use_angle_method=False,
+            )
+        )
+        sliders.addWidget(
+            _AngleSlider(
+                "SURROUND ANGLE",
+                "game_vsurround_surround_angle",
+                b,
+                91,
+                179,
+                use_angle_method=True,
+            )
+        )
+        sliders.addWidget(
+            _AngleSlider(
+                "SURROUND BACK ANGLE",
+                "game_vsurround_back_angle",
+                b,
+                91,
+                179,
+                use_angle_method=True,
+            )
+        )
 
         # Listening angle — shown only in Speakers mode.  Retain its layout space
         # when hidden so the sliders column (and therefore the canvas circle) keeps
         # the same size in both Phones and Speakers modes.
         self._listen_w = _AngleSlider(
-            "LISTENING ANGLE", "game_vsurround_listen_angle",
-            b, 12, 78, use_angle_method=False,
+            "LISTENING ANGLE",
+            "game_vsurround_listen_angle",
+            b,
+            12,
+            78,
+            use_angle_method=False,
         )
         _lsp = self._listen_w.sizePolicy()
         _lsp.setRetainSizeWhenHidden(True)
@@ -314,8 +373,7 @@ class GameFxPanel(QWidget):
             title="GAME EQ PRESETS",
             num_slots=5,
             load_filter=(
-                "Roland Game EQ / BridgeMix (*.brdgcEfx *.brdgcProfile *.json);;"
-                "All Files (*)"
+                "Roland Game EQ / BridgeMix (*.brdgcEfx *.brdgcProfile *.json);;All Files (*)"
             ),
             show_library=True,
             show_revert=True,
@@ -350,27 +408,34 @@ class GameFxPanel(QWidget):
         applied = self._apply_curve(params)
         if applied:
             QMessageBox.information(
-                self, "EQ Loaded",
+                self,
+                "EQ Loaded",
                 f"Loaded {applied} EQ parameter(s) into the live Game EQ.\n\n"
                 'Use "Write" to store them to the selected device slot.',
             )
         else:
-            QMessageBox.warning(self, "Nothing Loaded",
-                                "No Game EQ parameters found in that file.")
+            QMessageBox.warning(self, "Nothing Loaded", "No Game EQ parameters found in that file.")
 
     def _on_geq_write(self, slot: int, name: str) -> None:
         self._bridge.write_game_eq_preset_name(slot, name)
 
     def _on_geq_save(self, slot: int) -> None:
         path_str, _ = QFileDialog.getSaveFileName(
-            self, "Save Game EQ Curve", "", "BridgeMix Game EQ (*.json)")
+            self, "Save Game EQ Curve", "", "BridgeMix Game EQ (*.json)"
+        )
         if not path_str:
             return
         params = geq_lib.capture_live(self._bridge.state)
         Path(path_str).write_text(
-            json.dumps({"ExportApp": "BridgeMix", "kind": "game_eq_preset",
-                        "name": self._geq_preset.slot_display_name(slot),
-                        "parameters": params}, indent=2),
+            json.dumps(
+                {
+                    "ExportApp": "BridgeMix",
+                    "kind": "game_eq_preset",
+                    "name": self._geq_preset.slot_display_name(slot),
+                    "parameters": params,
+                },
+                indent=2,
+            ),
             encoding="utf-8",
         )
         QMessageBox.information(self, "Saved", f"Game EQ curve saved to {Path(path_str).name}")
@@ -380,10 +445,12 @@ class GameFxPanel(QWidget):
         ADD = "➕  Add current EQ to Library…"
         items = geq_lib.list_library() + [ADD]
         choice, ok = QInputDialog.getItem(
-            self, "Game EQ Library",
-            f"Assign a library preset to slot {slot + 1} "
-            "(applied live and written to the slot):",
-            items, 0, False,
+            self,
+            "Game EQ Library",
+            f"Assign a library preset to slot {slot + 1} (applied live and written to the slot):",
+            items,
+            0,
+            False,
         )
         if not ok or not choice:
             return

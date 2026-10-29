@@ -10,6 +10,7 @@ Curves are sourced without fabrication — capture them from the device's live E
 (``capture_live``) or import Roland ``.brdgcEfx`` files via the existing
 ProfileWidget loader, then save into the library here.
 """
+
 from __future__ import annotations
 
 import json
@@ -36,10 +37,12 @@ CURVE_PARAM_NAMES: list[str] = (
 # Surround/back angles are read_only in REGISTRY (they use the high-bit angle
 # encoding) — they must be written via BridgeCast.set_vsurround_angle(), not
 # set_parameter().  Callers applying a preset should special-case these.
-ANGLE_PARAM_NAMES: frozenset[str] = frozenset({
-    "game_vsurround_surround_angle",
-    "game_vsurround_back_angle",
-})
+ANGLE_PARAM_NAMES: frozenset[str] = frozenset(
+    {
+        "game_vsurround_surround_angle",
+        "game_vsurround_back_angle",
+    }
+)
 
 
 def library_dir() -> Path:
@@ -60,6 +63,7 @@ def capture_live(state: dict[str, int]) -> dict[str, int]:
 def _factory_presets() -> dict[str, dict[str, int]]:
     # Lazy import avoids a circular dependency (factory imports CURVE_PARAM_NAMES).
     from bridgemix.preset.game_eq_factory import FACTORY_PRESETS
+
     return FACTORY_PRESETS
 
 
@@ -88,14 +92,17 @@ def save_library_preset(name: str, params: dict[str, int]) -> Path:
     clean: dict[str, int] = {}
     for k, v in params.items():
         p = REGISTRY.get(k)
-        if k in CURVE_PARAM_NAMES and p is not None and isinstance(v, int) \
-                and p.min_value <= v <= p.max_value:
+        if (
+            k in CURVE_PARAM_NAMES
+            and p is not None
+            and isinstance(v, int)
+            and p.min_value <= v <= p.max_value
+        ):
             clean[k] = v
     path = library_dir() / f"{_slugify(name)}.json"
     path.write_text(
         json.dumps(
-            {"ExportApp": "BridgeMix", "kind": "game_eq_preset",
-             "name": name, "parameters": clean},
+            {"ExportApp": "BridgeMix", "kind": "game_eq_preset", "name": name, "parameters": clean},
             indent=2,
         ),
         encoding="utf-8",
@@ -114,8 +121,11 @@ def load_library_preset(name: str) -> dict[str, int]:
             continue
         if (raw.get("name") or path.stem) == name:
             params = raw.get("parameters", {})
-            return {k: int(v) for k, v in params.items()
-                    if k in CURVE_PARAM_NAMES and isinstance(v, int)}
+            return {
+                k: int(v)
+                for k, v in params.items()
+                if k in CURVE_PARAM_NAMES and isinstance(v, int)
+            }
     factory = _factory_presets()
     if name in factory:
         return dict(factory[name])

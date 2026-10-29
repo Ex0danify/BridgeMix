@@ -4,6 +4,7 @@ FastAPI application factory for the BridgeMix REST API.
 Swagger UI is served at ``/docs`` and ReDoc at ``/redoc``; the raw OpenAPI schema
 lives at ``/openapi.json``.
 """
+
 from __future__ import annotations
 
 from fastapi import FastAPI, HTTPException, Request
@@ -68,6 +69,7 @@ def _install_origin_guard(app: FastAPI, host: str, port: int) -> None:
 
 # ── Response / request models ──────────────────────────────────────────────────
 
+
 class Status(BaseModel):
     connected: bool = Field(..., description="Whether a device is currently connected.")
     model: str | None = Field(None, description="Device model name, if known.")
@@ -98,38 +100,52 @@ def create_app(gateway: DeviceFacade, host: str = "127.0.0.1", port: int = 8765)
         # than serving stale cached values a client can't tell are stale.
         return JSONResponse({"detail": "No device connected"}, status_code=503)
 
-    @app.get("/api/v1/status", response_model=Status, tags=["device"],
-             summary="Device connection status")
+    @app.get(
+        "/api/v1/status", response_model=Status, tags=["device"], summary="Device connection status"
+    )
     def get_status() -> dict:
         return gateway.status()
 
-    @app.get("/api/v1/parameters", response_model=list[Parameter], tags=["parameters"],
-             summary="List all parameters with ranges and current values")
+    @app.get(
+        "/api/v1/parameters",
+        response_model=list[Parameter],
+        tags=["parameters"],
+        summary="List all parameters with ranges and current values",
+    )
     def list_parameters() -> list[dict]:
         return gateway.list_parameters()
 
-    @app.get("/api/v1/parameters/{name}", response_model=Parameter, tags=["parameters"],
-             summary="Get one parameter")
+    @app.get(
+        "/api/v1/parameters/{name}",
+        response_model=Parameter,
+        tags=["parameters"],
+        summary="Get one parameter",
+    )
     def get_parameter(name: str) -> dict:
         try:
             return gateway.get_parameter(name)
-        except ParameterNotFound:
-            raise HTTPException(status_code=404, detail=f"Unknown parameter: {name}")
+        except ParameterNotFound as exc:
+            raise HTTPException(status_code=404, detail=f"Unknown parameter: {name}") from exc
 
-    @app.put("/api/v1/parameters/{name}", response_model=Parameter, tags=["parameters"],
-             summary="Set one parameter")
+    @app.put(
+        "/api/v1/parameters/{name}",
+        response_model=Parameter,
+        tags=["parameters"],
+        summary="Set one parameter",
+    )
     def set_parameter(name: str, body: SetParameter) -> dict:
         try:
             return gateway.set_parameter(name, body.value)
-        except ParameterNotFound:
-            raise HTTPException(status_code=404, detail=f"Unknown parameter: {name}")
-        except ParameterReadOnly:
-            raise HTTPException(status_code=409, detail=f"Parameter is read-only: {name}")
+        except ParameterNotFound as exc:
+            raise HTTPException(status_code=404, detail=f"Unknown parameter: {name}") from exc
+        except ParameterReadOnly as exc:
+            raise HTTPException(status_code=409, detail=f"Parameter is read-only: {name}") from exc
         except ParameterOutOfRange as exc:
-            raise HTTPException(status_code=422, detail=str(exc))
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
 
-    @app.get("/api/v1/state", tags=["parameters"],
-             summary="Flat name→value map of all cached values")
+    @app.get(
+        "/api/v1/state", tags=["parameters"], summary="Flat name→value map of all cached values"
+    )
     def get_state() -> dict[str, int]:
         return gateway.state()
 

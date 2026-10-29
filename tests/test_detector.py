@@ -1,10 +1,11 @@
 """Tests for MIDI port detection (``bridgemix.midi.detector``)."""
+
 from __future__ import annotations
 
 from bridgemix.midi import detector
 
-
 # ── _best_port ────────────────────────────────────────────────────────────────
+
 
 def test_best_port_prefers_app_over_ctrl():
     names = ["BRIDGE CAST CTRL 2", "BRIDGE CAST APP 1", "Other Device"]
@@ -30,11 +31,14 @@ def test_best_port_empty_list():
 
 # ── find_midi_ports / find_device ─────────────────────────────────────────────
 
+
 def test_find_midi_ports_returns_app_ports(monkeypatch):
-    monkeypatch.setattr(detector.mido, "get_output_names",
-                        lambda: ["BRIDGE CAST APP 1", "BRIDGE CAST CTRL 2"])
-    monkeypatch.setattr(detector.mido, "get_input_names",
-                        lambda: ["BRIDGE CAST APP 0", "BRIDGE CAST CTRL 1"])
+    monkeypatch.setattr(
+        detector.mido, "get_output_names", lambda: ["BRIDGE CAST APP 1", "BRIDGE CAST CTRL 2"]
+    )
+    monkeypatch.setattr(
+        detector.mido, "get_input_names", lambda: ["BRIDGE CAST APP 0", "BRIDGE CAST CTRL 1"]
+    )
     tx, rx = detector.find_midi_ports()
     assert tx == "BRIDGE CAST APP 1"
     assert rx == "BRIDGE CAST APP 0"
@@ -49,20 +53,18 @@ def test_find_midi_ports_handles_missing_device(monkeypatch):
 def test_find_midi_ports_swallows_backend_errors(monkeypatch):
     def boom():
         raise RuntimeError("no MIDI backend")
+
     monkeypatch.setattr(detector.mido, "get_output_names", boom)
     assert detector.find_midi_ports() == (None, None)
 
 
 def test_find_device_returns_none_unless_both_present(monkeypatch):
-    monkeypatch.setattr(detector.mido, "get_output_names",
-                        lambda: ["BRIDGE CAST APP 1"])
+    monkeypatch.setattr(detector.mido, "get_output_names", lambda: ["BRIDGE CAST APP 1"])
     monkeypatch.setattr(detector.mido, "get_input_names", lambda: ["Other"])
     assert detector.find_device() == (None, None)
 
 
 def test_find_device_returns_pair_when_present(monkeypatch):
-    monkeypatch.setattr(detector.mido, "get_output_names",
-                        lambda: ["BRIDGE CAST APP 1"])
-    monkeypatch.setattr(detector.mido, "get_input_names",
-                        lambda: ["BRIDGE CAST APP 0"])
+    monkeypatch.setattr(detector.mido, "get_output_names", lambda: ["BRIDGE CAST APP 1"])
+    monkeypatch.setattr(detector.mido, "get_input_names", lambda: ["BRIDGE CAST APP 0"])
     assert detector.find_device() == ("BRIDGE CAST APP 1", "BRIDGE CAST APP 0")

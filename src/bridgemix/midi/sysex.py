@@ -12,6 +12,7 @@ Roland RQ1 read frame (mido 17 bytes, wire 19 bytes):
   [41 10 00 00 00 00 11] [11] [7F] [sec] [type] [addr_hi] [addr_lo] [00] [00] [size] [chk]
    0                  6   7    8    9     10      11        12        13   14   15     16
 """
+
 from __future__ import annotations
 
 # Sub-model byte used in all Roland Bridge Cast frames
@@ -36,10 +37,20 @@ def build_write(
     """Build a DT1 write frame (mido tuple, 15 bytes)."""
     chk = _roland_checksum([_SUBMODEL, section, type_, addr_hi, addr_lo, value])
     return (
-        0x41, 0x10, 0x00, 0x00, 0x00, 0x00, 0x11,  # Roland header
-        0x12,        # DT1
-        _SUBMODEL,   # 0x7F
-        section, type_, addr_hi, addr_lo, value,
+        0x41,
+        0x10,
+        0x00,
+        0x00,
+        0x00,
+        0x00,
+        0x11,  # Roland header
+        0x12,  # DT1
+        _SUBMODEL,  # 0x7F
+        section,
+        type_,
+        addr_hi,
+        addr_lo,
+        value,
         chk,
     )
 
@@ -65,10 +76,21 @@ def build_write_pair(
     """
     chk = _roland_checksum([_SUBMODEL, section, type_, addr_hi, addr_lo, val1, val2])
     return (
-        0x41, 0x10, 0x00, 0x00, 0x00, 0x00, 0x11,  # Roland header
-        0x12,        # DT1
-        _SUBMODEL,   # 0x7F
-        section, type_, addr_hi, addr_lo, val1, val2,
+        0x41,
+        0x10,
+        0x00,
+        0x00,
+        0x00,
+        0x00,
+        0x11,  # Roland header
+        0x12,  # DT1
+        _SUBMODEL,  # 0x7F
+        section,
+        type_,
+        addr_hi,
+        addr_lo,
+        val1,
+        val2,
         chk,
     )
 
@@ -83,11 +105,21 @@ def build_read(
     """Build an RQ1 read frame (mido tuple, 17 bytes)."""
     chk = _roland_checksum([_SUBMODEL, section, type_, addr_hi, addr_lo, 0x00, 0x00, size])
     return (
-        0x41, 0x10, 0x00, 0x00, 0x00, 0x00, 0x11,  # Roland header
-        0x11,        # RQ1
-        _SUBMODEL,   # 0x7F
-        section, type_, addr_hi, addr_lo,
-        0x00, 0x00,  # padding bytes
+        0x41,
+        0x10,
+        0x00,
+        0x00,
+        0x00,
+        0x00,
+        0x11,  # Roland header
+        0x11,  # RQ1
+        _SUBMODEL,  # 0x7F
+        section,
+        type_,
+        addr_hi,
+        addr_lo,
+        0x00,
+        0x00,  # padding bytes
         size,
         chk,
     )
@@ -131,14 +163,14 @@ def parse_identity_reply(data: tuple[int, ...]) -> dict | None:
         return None
     manufacturer = data[4]
     # 7-bit MIDI values: family/member are (msb << 7) | lsb
-    family  = (data[6] << 7) | data[5]
-    member  = (data[8] << 7) | data[7]
+    family = (data[6] << 7) | data[5]
+    member = (data[8] << 7) | data[7]
     firmware = (data[9], data[10], data[11], data[12])
     return {
         "manufacturer": manufacturer,
-        "family":       family,
-        "member":       member,
-        "firmware":     firmware,
+        "family": family,
+        "member": member,
+        "firmware": firmware,
     }
 
 

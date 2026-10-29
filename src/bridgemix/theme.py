@@ -7,65 +7,66 @@ String constants (hex)  → use in QSS and f-strings
 QColor constants (Q_*)  → use in QPainter-based widgets; never hardcode QColor values
                           in individual widget files; always reference these instead.
 """
+
 from PyQt6.QtGui import QColor
 
 # ── Channel accent colours ─────────────────────────────────────────────────────
-CH_MIC   = "#e05c12"   # orange (accent)
-CH_AUX   = "#4a9eff"   # blue
-CH_CHAT  = "#a78bfa"   # purple
-CH_GAME  = "#22c55e"   # green
-CH_MUSIC = "#f59e0b"   # yellow
-CH_SYS   = "#34d399"   # teal
-CH_SFX   = "#fb7185"   # pink
+CH_MIC = "#e05c12"  # orange (accent)
+CH_AUX = "#4a9eff"  # blue
+CH_CHAT = "#a78bfa"  # purple
+CH_GAME = "#22c55e"  # green
+CH_MUSIC = "#f59e0b"  # yellow
+CH_SYS = "#34d399"  # teal
+CH_SFX = "#fb7185"  # pink
 
 CHANNEL_COLORS: dict[str, str] = {
-    "mic":   CH_MIC,
-    "aux":   CH_AUX,
-    "chat":  CH_CHAT,
-    "game":  CH_GAME,
+    "mic": CH_MIC,
+    "aux": CH_AUX,
+    "chat": CH_CHAT,
+    "game": CH_GAME,
     "music": CH_MUSIC,
-    "sys":   CH_SYS,
-    "sfx":   CH_SFX,
+    "sys": CH_SYS,
+    "sfx": CH_SFX,
 }
 
 # ── Surfaces ───────────────────────────────────────────────────────────────────
-BG        = "#0e0e0f"
-SURFACE   = "#141416"
+BG = "#0e0e0f"
+SURFACE = "#141416"
 SURFACE_2 = "#1a1a1d"
 SURFACE_3 = "#202024"
 SURFACE_4 = "#28282d"
 SURFACE_5 = "#313136"
 
 # ── Text ───────────────────────────────────────────────────────────────────────
-TEXT       = "#e8e8ea"
+TEXT = "#e8e8ea"
 TEXT_MUTED = "#7a7a82"
 TEXT_FAINT = "#48484f"
 
 # ── Accent ────────────────────────────────────────────────────────────────────
-ACCENT       = "#e05c12"
+ACCENT = "#e05c12"
 ACCENT_HOVER = "#f0702a"
-ACCENT_SOFT  = "rgba(224,92,18,0.14)"
-ACCENT_GLOW  = "rgba(224,92,18,0.35)"
+ACCENT_SOFT = "rgba(224,92,18,0.14)"
+ACCENT_GLOW = "rgba(224,92,18,0.35)"
 
 # ── Semantic ───────────────────────────────────────────────────────────────────
-GREEN  = "#22c55e"
-RED    = "#f87171"
-BLUE   = "#4a9eff"
+GREEN = "#22c55e"
+RED = "#f87171"
+BLUE = "#4a9eff"
 
 # ── QColor palette (for QPainter-based widgets) ───────────────────────────────
 # Mirrors the hex-string tokens above so painting code never hardcodes a colour.
 # Import with:  from bridgemix import theme  →  use theme.Q_ACCENT, etc.
 
-Q_BG           = QColor(BG)           # #0e0e0f — canvas background
-Q_ACCENT       = QColor(ACCENT)       # #e05c12 — brand orange (toggle ON, active)
-Q_ACCENT_HOVER = QColor(ACCENT_HOVER) # #f0702a — hot / hover state
-Q_SURFACE_4    = QColor(SURFACE_4)    # #28282d — inactive groove / track fill
-Q_SURFACE_5    = QColor(SURFACE_5)    # #313136 — toggle OFF track
-Q_TEXT         = QColor(TEXT)         # #e8e8ea — primary text / peak hold dash
-Q_TEXT_MUTED   = QColor(TEXT_MUTED)   # #7a7a82 — secondary text / axis labels
-Q_TEXT_FAINT   = QColor(TEXT_FAINT)   # #48484f — grid lines / de-emphasised text
-Q_RED          = QColor(RED)          # #f87171 — clip zone / clip flash
-Q_GREEN        = QColor(GREEN)        # #22c55e — optimal zone
+Q_BG = QColor(BG)  # #0e0e0f — canvas background
+Q_ACCENT = QColor(ACCENT)  # #e05c12 — brand orange (toggle ON, active)
+Q_ACCENT_HOVER = QColor(ACCENT_HOVER)  # #f0702a — hot / hover state
+Q_SURFACE_4 = QColor(SURFACE_4)  # #28282d — inactive groove / track fill
+Q_SURFACE_5 = QColor(SURFACE_5)  # #313136 — toggle OFF track
+Q_TEXT = QColor(TEXT)  # #e8e8ea — primary text / peak hold dash
+Q_TEXT_MUTED = QColor(TEXT_MUTED)  # #7a7a82 — secondary text / axis labels
+Q_TEXT_FAINT = QColor(TEXT_FAINT)  # #48484f — grid lines / de-emphasised text
+Q_RED = QColor(RED)  # #f87171 — clip zone / clip flash
+Q_GREEN = QColor(GREEN)  # #22c55e — optimal zone
 
 
 # ── Global application stylesheet ─────────────────────────────────────────────

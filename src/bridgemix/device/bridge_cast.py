@@ -1,4 +1,4 @@
-﻿"""
+"""
 BridgeCast — QObject facade for the Roland Bridge Cast.
 
 Responsibilities:
@@ -8,12 +8,13 @@ Responsibilities:
   - Generic set_parameter() / state management
   - Level-meter decoding from heartbeat state vector (FW 1.06: 137-byte; FW 3.00: 127-byte + continuation)
 """
+
 from __future__ import annotations
 
 import logging
 import time
 
-from PyQt6.QtCore import QObject, QTimer, Qt, pyqtSignal
+from PyQt6.QtCore import QObject, Qt, QTimer, pyqtSignal
 
 from bridgemix.device import constants as C
 from bridgemix.device.parameters import REGISTRY, lookup_by_address
@@ -31,54 +32,54 @@ log = logging.getLogger(__name__)
 
 # Heartbeat RQ1 frames sent every tick (50 ms)
 _HB_TICK_FRAMES = [
-    build_heartbeat_rq1(0x10, 0x00, 0x7C),   # 124-byte state vector (level meters)
-    build_heartbeat_rq1(0x11, 0x40, 0x08),   # dynamic status A (8 bytes)
-    build_heartbeat_rq1(0x11, 0x60, 0x10),   # dynamic status B (16 bytes)
+    build_heartbeat_rq1(0x10, 0x00, 0x7C),  # 124-byte state vector (level meters)
+    build_heartbeat_rq1(0x11, 0x40, 0x08),  # dynamic status A (8 bytes)
+    build_heartbeat_rq1(0x11, 0x60, 0x10),  # dynamic status B (16 bytes)
 ]
 
 # Additional RQ1 frames sent every 20th tick (~1 s)
 _HB_LONG_FRAMES = [
-    build_heartbeat_rq1(0x00, 0x00, 0x08),   # keep-alive ping (firmware echo)
-    build_heartbeat_rq1(0x10, 0x00, 0x7C),   # state vector (also in normal batch)
-    build_heartbeat_rq1(0x11, 0x00, 0x70),   # full status snapshot (112 bytes)
+    build_heartbeat_rq1(0x00, 0x00, 0x08),  # keep-alive ping (firmware echo)
+    build_heartbeat_rq1(0x10, 0x00, 0x7C),  # state vector (also in normal batch)
+    build_heartbeat_rq1(0x11, 0x00, 0x70),  # full status snapshot (112 bytes)
 ]
 
 # Bulk sync RQ1 frames sent on connect — (section, type, addr_hi, addr_lo, size)
 # Staggered 5 ms apart to avoid wedging the device.
 _SYNC_FRAMES = [
-    (C.SECTION_GLOBAL,  C.TYPE_SWITCH,       0x00, 0x00, C.SYNC_RQ1_GLOBAL_SIZE),
-    (C.SECTION_CHANNEL, C.TYPE_FADER,        0x00, 0x00, C.SYNC_RQ1_FADER_SIZE),
-    (C.SECTION_CHANNEL, C.TYPE_SWITCH,       0x00, 0x00, C.SYNC_RQ1_SWITCH_SIZE),
-    (C.SECTION_CHANNEL, C.TYPE_DELAY,        0x00, 0x00, C.SYNC_RQ1_DELAY_SIZE),
+    (C.SECTION_GLOBAL, C.TYPE_SWITCH, 0x00, 0x00, C.SYNC_RQ1_GLOBAL_SIZE),
+    (C.SECTION_CHANNEL, C.TYPE_FADER, 0x00, 0x00, C.SYNC_RQ1_FADER_SIZE),
+    (C.SECTION_CHANNEL, C.TYPE_SWITCH, 0x00, 0x00, C.SYNC_RQ1_SWITCH_SIZE),
+    (C.SECTION_CHANNEL, C.TYPE_DELAY, 0x00, 0x00, C.SYNC_RQ1_DELAY_SIZE),
     (C.SECTION_CHANNEL, C.TYPE_STRIP_CONFIG, 0x00, 0x00, C.SYNC_RQ1_LED_SIZE),
     # Mic Clean Up + 10-band EQ — all mic_* parameters under TYPE_MIC_FX (0x01)
-    (C.SECTION_CHANNEL, C.TYPE_MIC_FX,       0x00, 0x00, C.SYNC_RQ1_MIC_FX_SIZE),
+    (C.SECTION_CHANNEL, C.TYPE_MIC_FX, 0x00, 0x00, C.SYNC_RQ1_MIC_FX_SIZE),
     # NS Expander + Compressor Modern/mode (TYPE_MIC_FX_EXT = 0x0E)
-    (C.SECTION_CHANNEL, C.TYPE_MIC_FX_EXT,  0x00, 0x00, C.SYNC_RQ1_MIC_EXT_SIZE),
+    (C.SECTION_CHANNEL, C.TYPE_MIC_FX_EXT, 0x00, 0x00, C.SYNC_RQ1_MIC_EXT_SIZE),
     # Voice FX + Reverb
-    (C.SECTION_CHANNEL, C.TYPE_VOICE,        0x00, 0x00, C.SYNC_RQ1_VOICE_SIZE),
+    (C.SECTION_CHANNEL, C.TYPE_VOICE, 0x00, 0x00, C.SYNC_RQ1_VOICE_SIZE),
     # Chat channel effects
-    (C.SECTION_CHANNEL, C.TYPE_CHAT_FX,      0x00, 0x00, C.SYNC_RQ1_CHAT_FX_SIZE),
+    (C.SECTION_CHANNEL, C.TYPE_CHAT_FX, 0x00, 0x00, C.SYNC_RQ1_CHAT_FX_SIZE),
     # Game EQ + Limiter + Virtual Surround
-    (C.SECTION_CHANNEL, C.TYPE_GAME_FX,      0x00, 0x00, C.SYNC_RQ1_GAME_FX_SIZE),
+    (C.SECTION_CHANNEL, C.TYPE_GAME_FX, 0x00, 0x00, C.SYNC_RQ1_GAME_FX_SIZE),
     # Hot Key button assignments
-    (C.SECTION_CHANNEL, C.TYPE_HOTKEY,       0x00, 0x00, C.SYNC_RQ1_HOTKEY_SIZE),
+    (C.SECTION_CHANNEL, C.TYPE_HOTKEY, 0x00, 0x00, C.SYNC_RQ1_HOTKEY_SIZE),
 ]
 
 
 class BridgeCast(QObject):
     # Public signals
-    connected = pyqtSignal(bool)                  # device connected / disconnected
-    parameter_changed = pyqtSignal(str, int)      # name, value
-    meter_updated = pyqtSignal(dict)              # {channel_key: (L, R)} 0–16383
-    status_message = pyqtSignal(str)              # human-readable status
-    sysex_tx = pyqtSignal(tuple)                  # raw mido tuple (for MIDI monitor)
-    sysex_rx = pyqtSignal(tuple)                  # raw mido tuple (for MIDI monitor)
+    connected = pyqtSignal(bool)  # device connected / disconnected
+    parameter_changed = pyqtSignal(str, int)  # name, value
+    meter_updated = pyqtSignal(dict)  # {channel_key: (L, R)} 0–16383
+    status_message = pyqtSignal(str)  # human-readable status
+    sysex_tx = pyqtSignal(tuple)  # raw mido tuple (for MIDI monitor)
+    sysex_rx = pyqtSignal(tuple)  # raw mido tuple (for MIDI monitor)
     hw_strip_assignment_changed = pyqtSignal(int, str)  # strip_index (0–3), ch_key
-    device_info_updated = pyqtSignal(str, str)    # model_name, firmware_version
-    voice_preset_names_updated = pyqtSignal(list) # list[str] — 5 Voice FX preset names
-    profile_names_updated      = pyqtSignal(list) # list[str] — 5 device profile names
-    game_eq_preset_names_updated = pyqtSignal(list) # list[str] — 5 Game EQ preset slot names
+    device_info_updated = pyqtSignal(str, str)  # model_name, firmware_version
+    voice_preset_names_updated = pyqtSignal(list)  # list[str] — 5 Voice FX preset names
+    profile_names_updated = pyqtSignal(list)  # list[str] — 5 device profile names
+    game_eq_preset_names_updated = pyqtSignal(list)  # list[str] — 5 Game EQ preset slot names
 
     # Internal signal for thread-bouncing mido callback → Qt main thread
     _sysex_received_internal = pyqtSignal(tuple)
@@ -86,21 +87,19 @@ class BridgeCast(QObject):
     def __init__(self, parent: QObject | None = None) -> None:
         super().__init__(parent)
         self._transport = MidiTransport()
-        self._state: dict[str, int] = {
-            name: p.default_value for name, p in REGISTRY.items()
-        }
+        self._state: dict[str, int] = {name: p.default_value for name, p in REGISTRY.items()}
         self._tick = 0
         self._is_connected = False
         self._last_rx: float = 0.0
         self._device_info: tuple[str, str] | None = None  # (model, firmware) dedup
-        self._voice_preset_names: list[str] = [f"Preset {i+1}"  for i in range(5)]
-        self._profile_names:      list[str] = [f"Profile {i+1}" for i in range(5)]
-        self._game_eq_preset_names: list[str] = [f"Game EQ {i+1}" for i in range(5)]
+        self._voice_preset_names: list[str] = [f"Preset {i + 1}" for i in range(5)]
+        self._profile_names: list[str] = [f"Profile {i + 1}" for i in range(5)]
+        self._game_eq_preset_names: list[str] = [f"Game EQ {i + 1}" for i in range(5)]
         # Cache for OUT_PHONES R and OUT_LINE from the FW 3.00 continuation frame
         # (sec=0x01, type=0x10, addr_hi=0x70).  Updated by _decode_status10_continuation()
         # each tick; consumed by _decode_state_vector().  At most one tick (50 ms) stale.
         self._cached_phones_R: int = 0
-        self._cached_line:     tuple[int, int] = (0, 0)
+        self._cached_line: tuple[int, int] = (0, 0)
 
         # Guard against device pushing stale bulk state after a host write.
         # Maps param name → expiry timestamp (monotonic). While guarded, incoming
@@ -196,14 +195,18 @@ class BridgeCast(QObject):
         self._send_raw(build_identity_request())
 
     def _send_rx_enable(self) -> None:
-        self._send_raw(build_write(
-            C.SECTION_STATUS, C.SUBTYPE_STATUS_10, C.ADDR_STATUS_10, 0x00, C.RX_ENABLE_ON
-        ))
+        self._send_raw(
+            build_write(
+                C.SECTION_STATUS, C.SUBTYPE_STATUS_10, C.ADDR_STATUS_10, 0x00, C.RX_ENABLE_ON
+            )
+        )
 
     def _send_rx_disable(self) -> None:
-        self._send_raw(build_write(
-            C.SECTION_STATUS, C.SUBTYPE_STATUS_10, C.ADDR_STATUS_10, 0x00, C.RX_ENABLE_OFF
-        ))
+        self._send_raw(
+            build_write(
+                C.SECTION_STATUS, C.SUBTYPE_STATUS_10, C.ADDR_STATUS_10, 0x00, C.RX_ENABLE_OFF
+            )
+        )
 
     def _sync_all_parameters(self) -> None:
         """Send bulk RQ1 reads to pull the full device state into the UI."""
@@ -216,8 +219,8 @@ class BridgeCast(QObject):
         log.debug("Sync: queued %d bulk RQ1 reads", len(_SYNC_FRAMES))
         # Stagger name reads after the main sync burst finishes
         burst_ms = len(_SYNC_FRAMES) * 5 + 100
-        QTimer.singleShot(burst_ms,       self._sync_voice_preset_names)
-        QTimer.singleShot(burst_ms + 50,  self._sync_profile_names)
+        QTimer.singleShot(burst_ms, self._sync_voice_preset_names)
+        QTimer.singleShot(burst_ms + 50, self._sync_profile_names)
         QTimer.singleShot(burst_ms + 100, self._sync_game_eq_preset_names)
 
     def _sync_voice_preset_names(self) -> None:
@@ -228,8 +231,9 @@ class BridgeCast(QObject):
         # Full 70-byte slot payload: name (ASCII) at addr 0x00–0x11,
         # voice params at canonical addresses from 0x20 onwards.
         for slot in range(5):
-            frame = build_read(C.SECTION_SYNC_10, slot * 0x10, 0x00, 0x00,
-                               C.SYNC_RQ1_VOICE_FX_PRESET_SIZE)
+            frame = build_read(
+                C.SECTION_SYNC_10, slot * 0x10, 0x00, 0x00, C.SYNC_RQ1_VOICE_FX_PRESET_SIZE
+            )
             QTimer.singleShot(slot * 5, lambda f=frame: self._send_raw(f))
         log.debug("Sync: queued 5 Voice FX preset name reads (SECTION_SYNC_10)")
 
@@ -246,8 +250,7 @@ class BridgeCast(QObject):
             return
         for slot in range(5):
             sec = C.SECTION_PROFILE_FIRST + slot
-            frame = build_read(sec, C.TYPE_SWITCH, 0x00, 0x00,
-                               C.SYNC_RQ1_PROFILE_NAME_SIZE)
+            frame = build_read(sec, C.TYPE_SWITCH, 0x00, 0x00, C.SYNC_RQ1_PROFILE_NAME_SIZE)
             QTimer.singleShot(slot * 5, lambda f=frame: self._send_raw(f))
         log.debug("Sync: queued 5 profile name reads (SECTION_PROFILE_* TYPE_SWITCH addr=0x00)")
 
@@ -260,8 +263,9 @@ class BridgeCast(QObject):
         if not self._is_connected:
             return
         for slot in range(5):
-            frame = build_read(C.SECTION_SYNC_11, slot * 0x10, 0x00, 0x00,
-                               C.SYNC_RQ1_GAME_EQ_PRESET_SIZE)
+            frame = build_read(
+                C.SECTION_SYNC_11, slot * 0x10, 0x00, 0x00, C.SYNC_RQ1_GAME_EQ_PRESET_SIZE
+            )
             QTimer.singleShot(slot * 5, lambda f=frame: self._send_raw(f))
         log.debug("Sync: queued 5 Game EQ preset name reads (SECTION_SYNC_11)")
 
@@ -277,8 +281,9 @@ class BridgeCast(QObject):
         """
         if not self._is_connected:
             return
-        self._send_raw(build_read(C.SECTION_CHANNEL, C.TYPE_GAME_FX, 0x00, 0x00,
-                                  C.SYNC_RQ1_GAME_FX_SIZE))
+        self._send_raw(
+            build_read(C.SECTION_CHANNEL, C.TYPE_GAME_FX, 0x00, 0x00, C.SYNC_RQ1_GAME_FX_SIZE)
+        )
 
     # ── Parameter control ────────────────────────────────────────────────────
 
@@ -295,7 +300,9 @@ class BridgeCast(QObject):
         if p.read_only:
             return
         if not (p.min_value <= value <= p.max_value):
-            log.warning("Value %d out of range [%d, %d] for %s", value, p.min_value, p.max_value, name)
+            log.warning(
+                "Value %d out of range [%d, %d] for %s", value, p.min_value, p.max_value, name
+            )
             return
         frame = build_write(p.section, p.param_type, p.addr_hi, p.addr_lo, value)
         self._send_raw(frame)
@@ -316,7 +323,7 @@ class BridgeCast(QObject):
             log.warning("Angle %d out of range for %s", degrees, name)
             return
         addr_lo = degrees >> 7
-        val     = degrees & 0x7F
+        val = degrees & 0x7F
         frame = build_write(p.section, p.param_type, p.addr_hi, addr_lo, val)
         self._send_raw(frame)
         self._state[name] = degrees
@@ -358,8 +365,8 @@ class BridgeCast(QObject):
         """
         padded = name[: C.VOICE_FX_PRESET_NAME_MAX].ljust(C.VOICE_FX_PRESET_NAME_MAX, "\x00")
         for i in range(9):
-            addr_lo = ord(padded[2 * i + 1]) & 0x7F   # second/odd char
-            value   = ord(padded[2 * i]) & 0x7F         # first/even char
+            addr_lo = ord(padded[2 * i + 1]) & 0x7F  # second/odd char
+            value = ord(padded[2 * i]) & 0x7F  # first/even char
             QTimer.singleShot(
                 i * 5,
                 lambda _hi=2 * i, _lo=addr_lo, _v=value: self._send_raw(
@@ -377,8 +384,7 @@ class BridgeCast(QObject):
         if not self._is_connected or not (0 <= slot <= 4):
             return
         self._write_name_pairs(C.TYPE_SWITCH, name[: C.VOICE_FX_PRESET_NAME_MAX])
-        log.info("Profile %d: writing name %r to SECTION_CHANNEL (9 standard writes)",
-                 slot, name)
+        log.info("Profile %d: writing name %r to SECTION_CHANNEL (9 standard writes)", slot, name)
 
     def sync_profile_names(self) -> None:
         """Public wrapper — re-fetch all 5 profile names from the device."""
@@ -399,9 +405,10 @@ class BridgeCast(QObject):
             return
         self._send_raw(build_write(0x7F, 0x7F, C.ADDR_PROFILE_SAVE, 0x00, slot))
         QTimer.singleShot(
-            50, lambda s=slot: self._send_raw(
+            50,
+            lambda s=slot: self._send_raw(
                 build_write(0x7F, 0x7F, C.ADDR_PROFILE_SELECT_7F, 0x00, s)
-            )
+            ),
         )
         log.info("Profile: saved current state to slot %d", slot)
 
@@ -429,7 +436,8 @@ class BridgeCast(QObject):
         )
         log.info(
             "Voice FX preset %d: writing name %r (9 frames + commit)",
-            slot, name[:C.VOICE_FX_PRESET_NAME_MAX],
+            slot,
+            name[: C.VOICE_FX_PRESET_NAME_MAX],
         )
 
     def save_voice_fx_preset_to_slot(self, slot: int) -> None:
@@ -518,8 +526,11 @@ class BridgeCast(QObject):
             ),
         )
         QTimer.singleShot(9 * 5 + 110, self._sync_game_eq_preset_names)
-        log.info("Game EQ preset %d: writing name %r (9 frames + save)",
-                 slot, name[: C.GAME_EQ_PRESET_NAME_MAX])
+        log.info(
+            "Game EQ preset %d: writing name %r (9 frames + save)",
+            slot,
+            name[: C.GAME_EQ_PRESET_NAME_MAX],
+        )
 
     def reset_game_eq_preset_to_defaults(self, slot: int) -> None:
         """Reset a Game EQ preset slot (0–4) to its factory default.
@@ -546,9 +557,7 @@ class BridgeCast(QObject):
             return
         self._send_raw(build_write(0x7F, 0x7F, C.ADDR_FACTORY_RESET, 0x55, 0x55))
         QTimer.singleShot(
-            50, lambda: self._send_raw(
-                build_write(0x7F, 0x7F, C.ADDR_FACTORY_RESET, 0x7F, 0x7F)
-            )
+            50, lambda: self._send_raw(build_write(0x7F, 0x7F, C.ADDR_FACTORY_RESET, 0x7F, 0x7F))
         )
         log.info("Device: factory reset triggered")
         # Give the device time to finish resetting internally, then resync.
@@ -567,9 +576,7 @@ class BridgeCast(QObject):
             "ExportApp": "BridgeMix",
             "ExportVersion": 1,
             "profile_slot": slot,
-            "profile_name": (
-                self._profile_names[slot] if 0 <= slot <= 4 else ""
-            ),
+            "profile_name": (self._profile_names[slot] if 0 <= slot <= 4 else ""),
             "parameters": dict(self._state),
         }
 
@@ -654,8 +661,8 @@ class BridgeCast(QObject):
 
     def _decode_identity_reply(self, info: dict) -> None:
         """Emit device_info_updated from a parsed Universal MIDI Identity Reply."""
-        family   = info["family"]
-        member   = info["member"]
+        family = info["family"]
+        member = info["member"]
         firmware = info["firmware"]
 
         model = self._ROLAND_DEVICE_NAMES.get((family, member))
@@ -675,7 +682,11 @@ class BridgeCast(QObject):
 
         log.info(
             "Device identity: %s  firmware: %s  (family=0x%04X member=0x%04X raw_fw=%s)",
-            model, fw_str, family, member, fw,
+            model,
+            fw_str,
+            family,
+            member,
+            fw,
         )
         self.device_info_updated.emit(model, fw_str)
 
@@ -706,15 +717,15 @@ class BridgeCast(QObject):
 
         if len(payload) >= 8:
             # V1 layout: build is a single byte, model_code at index 4
-            build      = payload[2]
+            build = payload[2]
             model_code = payload[4]
         else:
             # V2 layout: build is MSB/LSB at [1][2], model_code at index 3
-            build      = (payload[1] << 7) | payload[2]
+            build = (payload[1] << 7) | payload[2]
             model_code = payload[3]
 
         firmware = f"{major}.{minor:02d} ({build})"
-        model    = self._ECHO_MODEL_CODES.get(model_code, f"Unknown (code=0x{model_code:02X})")
+        model = self._ECHO_MODEL_CODES.get(model_code, f"Unknown (code=0x{model_code:02X})")
 
         info = (model, firmware)
         if info == self._device_info:
@@ -747,9 +758,11 @@ class BridgeCast(QObject):
         # addr_lo-as-first-byte encoding as SECTION_SYNC_10.  The remaining bytes
         # (addr 0x12+) are switch params but have no REGISTRY entries for per-profile
         # sections, so we handle the frame here and return without dispatching further.
-        if (C.SECTION_PROFILE_FIRST <= sec <= C.SECTION_PROFILE_LAST
-                and type_ == C.TYPE_SWITCH
-                and base_hi == 0x00):
+        if (
+            C.SECTION_PROFILE_FIRST <= sec <= C.SECTION_PROFILE_LAST
+            and type_ == C.TYPE_SWITCH
+            and base_hi == 0x00
+        ):
             self._handle_profile_name_frame(frame)
             return
 
@@ -777,8 +790,14 @@ class BridgeCast(QObject):
                 self._state[name] = value
                 self.parameter_changed.emit(name, value)
                 updated += 1
-        log.debug("Bulk DT1 sec=0x%02x type=0x%02x base=0x%02x payload=%d → %d params",
-                  sec, type_, base_hi, len(frame["payload"]), updated)
+        log.debug(
+            "Bulk DT1 sec=0x%02x type=0x%02x base=0x%02x payload=%d → %d params",
+            sec,
+            type_,
+            base_hi,
+            len(frame["payload"]),
+            updated,
+        )
 
     def _handle_voice_preset_name_frame(self, frame: dict) -> None:
         """Decode a preset name from a SECTION_SYNC_10 bulk reply.
@@ -798,7 +817,7 @@ class BridgeCast(QObject):
         name_bytes = C.VOICE_FX_PRESET_NAME_MAX
         chars: list[str] = []
         for i in range(0, min(name_bytes, len(payload) - 1), 2):
-            hi = payload[i]      # second char of pair
+            hi = payload[i]  # second char of pair
             lo = payload[i + 1]  # first char of pair
             if lo == 0 and hi == 0:
                 break
@@ -854,7 +873,7 @@ class BridgeCast(QObject):
         addr_lo (data[12]).  Slot = sec − SECTION_PROFILE_FIRST.
         Confirmed 2026-05-27 from ProfileMemory JSON + load-defaults capture.
         """
-        sec  = frame["section"]
+        sec = frame["section"]
         slot = sec - C.SECTION_PROFILE_FIRST
         if not (0 <= slot <= 4):
             log.debug("SECTION_PROFILE: unexpected section 0x%02x (slot=%d)", sec, slot)
@@ -865,7 +884,7 @@ class BridgeCast(QObject):
         name_bytes = C.VOICE_FX_PRESET_NAME_MAX  # same 18-char cap
         chars: list[str] = []
         for i in range(0, min(name_bytes, len(payload) - 1), 2):
-            hi = payload[i]      # second char of pair
+            hi = payload[i]  # second char of pair
             lo = payload[i + 1]  # first char of pair
             if lo == 0 and hi == 0:
                 break
@@ -915,22 +934,22 @@ class BridgeCast(QObject):
 
         meters = {
             # Direct/raw mic (wire 109–110, 2-byte mono, pre-bus)
-            "raw_mic":  slot2(C.METER_IDX_RAW_MIC),
+            "raw_mic": slot2(C.METER_IDX_RAW_MIC),
             # Streaming inputs (wire 45–68)
-            "st_mic":   slot(C.METER_IDX_ST_MIC),
-            "st_aux":   slot(C.METER_IDX_ST_AUX),
-            "st_chat":  slot(C.METER_IDX_ST_CHAT),
-            "st_game":  slot(C.METER_IDX_ST_GAME),
+            "st_mic": slot(C.METER_IDX_ST_MIC),
+            "st_aux": slot(C.METER_IDX_ST_AUX),
+            "st_chat": slot(C.METER_IDX_ST_CHAT),
+            "st_game": slot(C.METER_IDX_ST_GAME),
             "st_music": slot(C.METER_IDX_ST_MUSIC),
-            "st_sys":   slot(C.METER_IDX_ST_SYS),
+            "st_sys": slot(C.METER_IDX_ST_SYS),
             # Personal inputs (wire 69–108)
-            "ps_sfx":   slot(C.METER_IDX_PS_SFX),
-            "ps_mic":   slot(C.METER_IDX_PS_MIC),
-            "ps_aux":   slot(C.METER_IDX_PS_AUX),
-            "ps_chat":  slot(C.METER_IDX_PS_CHAT),
-            "ps_game":  slot(C.METER_IDX_PS_GAME),
+            "ps_sfx": slot(C.METER_IDX_PS_SFX),
+            "ps_mic": slot(C.METER_IDX_PS_MIC),
+            "ps_aux": slot(C.METER_IDX_PS_AUX),
+            "ps_chat": slot(C.METER_IDX_PS_CHAT),
+            "ps_game": slot(C.METER_IDX_PS_GAME),
             "ps_music": slot(C.METER_IDX_PS_MUSIC),
-            "ps_sys":   slot(C.METER_IDX_PS_SYS),
+            "ps_sys": slot(C.METER_IDX_PS_SYS),
             # Output block (wire 111–130)
             "out_stream": slot(C.METER_IDX_OUT_STREAM),
             "out_submix": slot(C.METER_IDX_OUT_SUBMIX),
@@ -938,14 +957,12 @@ class BridgeCast(QObject):
             # FW 1.06 (135-byte frame) — full 4-byte stereo slot present.
             "out_phones": (
                 (slot2(C.METER_IDX_OUT_PHONES), self._cached_phones_R)
-                if len(raw) < 135 else slot(C.METER_IDX_OUT_PHONES)
+                if len(raw) < 135
+                else slot(C.METER_IDX_OUT_PHONES)
             ),
             # OUT_LINE: FW 3.00 — trimmed from main frame; use cached value from 0x10/0x70.
             # FW 1.06 — full 4-byte stereo slot at wire index 127.
-            "out_line": (
-                self._cached_line
-                if len(raw) < 135 else slot(C.METER_IDX_OUT_LINE)
-            ),
+            "out_line": (self._cached_line if len(raw) < 135 else slot(C.METER_IDX_OUT_LINE)),
         }
         self.meter_updated.emit(meters)
 
@@ -954,8 +971,9 @@ class BridgeCast(QObject):
         # Echo it as the eq_analyzer parameter so a UI toggle stays in sync,
         # unless we just wrote it ourselves (write-guard window).
         analyzer = 1 if (len(raw) > 35 and raw[35]) else 0
-        if (self._state.get("eq_analyzer") != analyzer
-                and time.monotonic() > self._write_guard.get("eq_analyzer", 0.0)):
+        if self._state.get("eq_analyzer") != analyzer and time.monotonic() > self._write_guard.get(
+            "eq_analyzer", 0.0
+        ):
             self._state["eq_analyzer"] = analyzer
             self.parameter_changed.emit("eq_analyzer", analyzer)
 
@@ -988,8 +1006,10 @@ class BridgeCast(QObject):
     # ── Strip assignment helpers ──────────────────────────────────────────────
 
     _HW_STRIP_PARAM_INDEX: dict[str, int] = {
-        "hw_strip_1_ch": 0, "hw_strip_2_ch": 1,
-        "hw_strip_3_ch": 2, "hw_strip_4_ch": 3,
+        "hw_strip_1_ch": 0,
+        "hw_strip_2_ch": 1,
+        "hw_strip_3_ch": 2,
+        "hw_strip_4_ch": 3,
     }
 
     def _on_strip_param_changed(self, name: str, value: int) -> None:

@@ -47,6 +47,7 @@ We use [ruff](https://docs.astral.sh/ruff/) (config in `pyproject.toml`,
 ```bash
 ruff check .
 ruff check --fix .   # auto-fix what it can
+ruff format .        # CI runs `ruff format --check`
 ```
 
 Match the surrounding code's conventions. The codebase favours small, focused
@@ -57,7 +58,7 @@ don't hand-roll byte arrays elsewhere.
 
 1. Branch off `master`.
 2. Keep changes focused; add tests for protocol/logic changes.
-3. Make sure `pytest` passes and `ruff check` is clean.
+3. Make sure `pytest` passes and `ruff check` and `ruff format --check` are clean.
 4. Open a pull request describing **what** changed and, for protocol work,
    **how** you confirmed it (e.g. MIDI capture from the official app, observed
    device behaviour). Note your device model and firmware version.

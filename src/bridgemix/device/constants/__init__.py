@@ -14,9 +14,9 @@ All names are re-exported here so existing code using
 continues to work without modification.
 """
 
-from bridgemix.device.constants.sections import *   # noqa: F401, F403
-from bridgemix.device.constants.channel  import *   # noqa: F401, F403
-from bridgemix.device.constants.mic_fx   import *   # noqa: F401, F403
-from bridgemix.device.constants.voice_fx import *   # noqa: F401, F403
-from bridgemix.device.constants.game_fx  import *   # noqa: F401, F403
-from bridgemix.device.constants.global_  import *   # noqa: F401, F403
+from bridgemix.device.constants.channel import *  # noqa: F401, F403
+from bridgemix.device.constants.game_fx import *  # noqa: F401, F403
+from bridgemix.device.constants.global_ import *  # noqa: F401, F403
+from bridgemix.device.constants.mic_fx import *  # noqa: F401, F403
+from bridgemix.device.constants.sections import *  # noqa: F401, F403
+from bridgemix.device.constants.voice_fx import *  # noqa: F401, F403

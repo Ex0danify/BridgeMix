@@ -5,6 +5,7 @@ written to `self.settings` (the per-plugin store) and the widget never touches
 disk itself. Dependency handling lives in the host, so by the time this widget is
 built the server's deps are present and it only deals with server state.
 """
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
@@ -21,7 +22,7 @@ from PyQt6.QtWidgets import (
 
 from bridgemix.plugins import CardWidth, PluginWidget, style
 from bridgemix.plugins.builtins.remote_api.server import ApiServer
-from bridgemix.plugins.builtins.remote_api.settings import ApiSettings, DEFAULT_HOST, from_store
+from bridgemix.plugins.builtins.remote_api.settings import DEFAULT_HOST, ApiSettings, from_store
 
 if TYPE_CHECKING:
     from bridgemix.plugins import PluginContext
@@ -37,7 +38,7 @@ class RemoteApiWidget(PluginWidget):
 
     def __init__(
         self,
-        ctx: "PluginContext",
+        ctx: PluginContext,
         api_server: ApiServer,
         parent: QWidget | None = None,
     ) -> None:

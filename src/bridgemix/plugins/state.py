@@ -5,6 +5,7 @@ until enabled, and the first enable needs consent. Both bits are remembered here
 so we ask once. A missing or malformed file reads as "nothing enabled, nothing
 consented" and never raises.
 """
+
 from __future__ import annotations
 
 import json
@@ -39,7 +40,8 @@ class PluginState:
             return {}
         # Keep only well-formed entries.
         return {
-            pid: entry for pid, entry in raw.items()
+            pid: entry
+            for pid, entry in raw.items()
             if isinstance(pid, str) and isinstance(entry, dict)
         }
 

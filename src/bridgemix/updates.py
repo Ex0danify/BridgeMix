@@ -3,6 +3,7 @@
 The check runs off the UI thread and never raises into it:
 any network or parse failure simply means "no updateinfo", and the app keeps working offline.
 """
+
 from __future__ import annotations
 
 import json
@@ -26,8 +27,9 @@ _RELEASES_API = f"https://api.github.com/repos/{_REPO}/releases/latest"
 RELEASES_PAGE = f"https://github.com/{_REPO}/releases/latest"
 
 _CACHE_PATH = Path.home() / ".cache" / "bridgemix" / "update_check.json"
-_CHECK_INTERVAL = 24 * 60 * 60   # seconds between network checks
-_TIMEOUT = 5                     # seconds for the HTTP request
+_CHECK_INTERVAL = 24 * 60 * 60  # seconds between network checks
+_TIMEOUT = 5  # seconds for the HTTP request
+
 
 def current_version() -> str:
     """Running BridgeMix version.
@@ -177,7 +179,7 @@ class UpdateChecker(QObject):
     def _run(self, force: bool) -> None:
         try:
             info = check(force=force)
-        except Exception as exc:   # a checker thread must never take the app down
+        except Exception as exc:  # a checker thread must never take the app down
             log.debug("Update check thread error: %s", exc)
             info = None
         self.checked.emit(info)

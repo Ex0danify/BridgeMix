@@ -7,6 +7,7 @@ create_widget. Every step is isolated, so a broken plugin becomes an ERROR recor
 rather than an exception that reaches the app. No UI lives here; the manager hands
 PluginRecords to the Plugins panel.
 """
+
 from __future__ import annotations
 
 import enum
@@ -47,13 +48,13 @@ _USER_MODULE_PREFIX = "bridgemix_userplugins"
 
 
 class PluginStatus(enum.Enum):
-    LOADED = "loaded"             # running; widget mounted
-    DISABLED = "disabled"        # valid + consented, but the user turned it off
-    NEEDS_CONSENT = "consent"    # user plugin awaiting first-run consent
+    LOADED = "loaded"  # running; widget mounted
+    DISABLED = "disabled"  # valid + consented, but the user turned it off
+    NEEDS_CONSENT = "consent"  # user plugin awaiting first-run consent
     MISSING_DEPS = "missing_deps"  # enabled, but required packages aren't installed
-    CONFLICT = "conflict"        # its deps clash with another enabled plugin's
-    INCOMPATIBLE = "incompat"    # host_api does not admit this host
-    ERROR = "error"              # manifest invalid or load/instantiate failed
+    CONFLICT = "conflict"  # its deps clash with another enabled plugin's
+    INCOMPATIBLE = "incompat"  # host_api does not admit this host
+    ERROR = "error"  # manifest invalid or load/instantiate failed
 
 
 @dataclass
@@ -62,12 +63,12 @@ class PluginRecord:
 
     id: str
     path: Path
-    source: str                       # "builtin" | "user"
+    source: str  # "builtin" | "user"
     manifest: PluginManifest | None = None
     status: PluginStatus = PluginStatus.ERROR
     error: str = ""
     instance: Plugin | None = None
-    widget: "QWidget | None" = None
+    widget: QWidget | None = None
     builtin_package: str | None = None
     missing_deps: list[str] = field(default_factory=list)
     conflict: str = ""  # human-readable description when status is CONFLICT
@@ -84,7 +85,7 @@ class PluginRecord:
 class PluginManager(QObject):
     """Owns plugin discovery and lifecycle. Construct on the GUI thread."""
 
-    def __init__(self, device: "DeviceFacade", parent: QObject | None = None) -> None:
+    def __init__(self, device: DeviceFacade, parent: QObject | None = None) -> None:
         super().__init__(parent)
         self._device = device
         self._state = PluginState()
@@ -139,15 +140,21 @@ class PluginManager(QObject):
             manifest = load_manifest(path / MANIFEST_NAME)
         except ManifestError as exc:
             return PluginRecord(
-                id=path.name, path=path, source=source,
-                status=PluginStatus.ERROR, error=str(exc),
+                id=path.name,
+                path=path,
+                source=source,
+                status=PluginStatus.ERROR,
+                error=str(exc),
             )
 
         # Status is left at its default here; discover() reconciles right after,
         # which is the single place statuses are computed.
         return PluginRecord(
-            id=manifest.id, path=path, source=source,
-            manifest=manifest, builtin_package=pkg,
+            id=manifest.id,
+            path=path,
+            source=source,
+            manifest=manifest,
+            builtin_package=pkg,
         )
 
     def _is_enabled(self, record: PluginRecord) -> bool:
@@ -167,9 +174,7 @@ class PluginManager(QObject):
         disabling one immediately clears the other's conflict.
         """
         active = [r for r in self._records if self._is_active(r)]
-        requires_by_plugin = {
-            r.id: list(r.manifest.requires) for r in active if r.manifest
-        }
+        requires_by_plugin = {r.id: list(r.manifest.requires) for r in active if r.manifest}
         conflicts = self._conflict_messages(requires_by_plugin)
 
         for record in self._records:
@@ -219,7 +224,8 @@ class PluginManager(QObject):
         record.conflict = conflicts.get(record.id, "") if target is PluginStatus.CONFLICT else ""
         record.missing_deps = (
             missing_requirements(record.manifest.requires)
-            if target is PluginStatus.MISSING_DEPS and record.manifest else []
+            if target is PluginStatus.MISSING_DEPS and record.manifest
+            else []
         )
 
     def _conflict_messages(self, requires_by_plugin: dict[str, list[str]]) -> dict[str, str]:
@@ -242,11 +248,9 @@ class PluginManager(QObject):
         plugin's, so one pip pass resolves them together instead of clobbering."""
         seen: set[str] = set()
         out: list[str] = []
-        sources = [record] + [
-            r for r in self._records if r.id != record.id and self._is_active(r)
-        ]
+        sources = [record] + [r for r in self._records if r.id != record.id and self._is_active(r)]
         for r in sources:
-            for req in (r.manifest.requires if r.manifest else ()):
+            for req in r.manifest.requires if r.manifest else ():
                 if req not in seen:
                     seen.add(req)
                     out.append(req)
@@ -272,10 +276,7 @@ class PluginManager(QObject):
             )
             widget = instance.create_widget(ctx)
             if not isinstance(widget, QWidget):
-                raise TypeError(
-                    "create_widget must return a QWidget, got "
-                    f"{type(widget).__name__}"
-                )
+                raise TypeError(f"create_widget must return a QWidget, got {type(widget).__name__}")
         except Exception as exc:  # noqa: BLE001 — never let a plugin crash the app
             log.exception("Plugin %r failed to load", record.id)
             record.status = PluginStatus.ERROR
@@ -293,9 +294,7 @@ class PluginManager(QObject):
         manifest = record.manifest
         assert manifest is not None
         if record.is_builtin:
-            module = importlib.import_module(
-                f"{record.builtin_package}.{manifest.entry_module}"
-            )
+            module = importlib.import_module(f"{record.builtin_package}.{manifest.entry_module}")
         else:
             module = self._import_user_module(record, manifest.entry_module)
         return getattr(module, manifest.entry_attr)
@@ -315,9 +314,7 @@ class PluginManager(QObject):
         elif mod_file.is_file():
             location, search = mod_file, None
         else:
-            raise ModuleNotFoundError(
-                f"entry module {entry_module!r} not found in {record.path}"
-            )
+            raise ModuleNotFoundError(f"entry module {entry_module!r} not found in {record.path}")
 
         if str(record.path) not in sys.path:
             sys.path.insert(0, str(record.path))

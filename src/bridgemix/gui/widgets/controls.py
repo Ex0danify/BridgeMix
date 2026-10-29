@@ -14,9 +14,11 @@ LabeledSlider        — section caption + horizontal slider + right-side value 
                        bound to a BridgeCast int parameter with a custom format function
 ParamCheck           — plain QCheckBox bound to a BridgeCast bool parameter
 """
+
 from __future__ import annotations
 
-from typing import Callable, TYPE_CHECKING
+from collections.abc import Callable
+from typing import TYPE_CHECKING
 
 from PyQt6.QtCore import QPointF, QRectF, Qt, pyqtSignal
 from PyQt6.QtGui import QColor, QLinearGradient, QPainter, QPainterPath, QPen
@@ -33,11 +35,11 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-
 # ── Scroll-safe widgets ───────────────────────────────────────────────────────
 # All three classes share the same rule: wheel events only take effect once the
 # widget has keyboard focus (i.e. the user clicked it first).  Without focus the
 # event is passed up so parent QScrollAreas can scroll normally.
+
 
 class Slider(QSlider):
     """QSlider that ignores wheel events unless it already has keyboard focus."""
@@ -84,6 +86,7 @@ class ScrollGuardSpinBox(QSpinBox):
         else:
             event.ignore()
 
+
 from bridgemix import theme
 
 if TYPE_CHECKING:
@@ -91,6 +94,7 @@ if TYPE_CHECKING:
 
 
 # ── LimitSlider ───────────────────────────────────────────────────────────────
+
 
 class LimitSlider(Slider):
     """Horizontal Slider that paints a vertical marker line at a fixed value.
@@ -103,7 +107,7 @@ class LimitSlider(Slider):
     def __init__(self, orientation, parent: QWidget | None = None) -> None:
         super().__init__(orientation, parent)
         self._limit: int | None = None
-        self._limit_color = QColor("#f59e0b")   # amber warning marker
+        self._limit_color = QColor("#f59e0b")  # amber warning marker
 
     def set_limit(self, value: int | None) -> None:
         self._limit = value
@@ -134,6 +138,7 @@ class LimitSlider(Slider):
 
 # ── PeakMeter ─────────────────────────────────────────────────────────────────
 
+
 class PeakMeter(QWidget):
     """Vertical peak meter with a colour scale anchored to the full track.
 
@@ -146,7 +151,7 @@ class PeakMeter(QWidget):
     """
 
     _WELL = QColor("#08080a")
-    _RIM  = QColor(255, 255, 255, 28)    # ≈ rgba(255,255,255,0.11)
+    _RIM = QColor(255, 255, 255, 28)  # ≈ rgba(255,255,255,0.11)
     _PEAK = QColor(255, 255, 255, 170)
 
     # Scale stops (0.0 = bottom of track, 1.0 = top).  Green floor, amber from
@@ -221,6 +226,7 @@ class PeakMeter(QWidget):
 
 # ── ToggleSwitch ──────────────────────────────────────────────────────────────
 
+
 class ToggleSwitch(QWidget):
     """
     Pill-shaped toggle switch painted with QPainter.
@@ -233,10 +239,10 @@ class ToggleSwitch(QWidget):
 
     toggled = pyqtSignal(bool)
 
-    _W    = 40
-    _H    = 22
-    _C_ON  = theme.Q_ACCENT    # brand orange (#e05c12)
-    _C_OFF = theme.Q_SURFACE_5 # inactive grey (#313136)
+    _W = 40
+    _H = 22
+    _C_ON = theme.Q_ACCENT  # brand orange (#e05c12)
+    _C_OFF = theme.Q_SURFACE_5  # inactive grey (#313136)
 
     def __init__(self, checked: bool = False, parent: QWidget | None = None) -> None:
         super().__init__(parent)
@@ -275,8 +281,8 @@ class ToggleSwitch(QWidget):
 
         # Knob — white circle, 2 px inset from track edge
         pad = 2
-        d   = H - 2 * pad
-        x   = (W - pad - d) if self._checked else pad
+        d = H - 2 * pad
+        x = (W - pad - d) if self._checked else pad
         p.setBrush(QColor(255, 255, 255))
         p.drawEllipse(x, pad, d, d)
 
@@ -284,6 +290,7 @@ class ToggleSwitch(QWidget):
 
 
 # ── ParamToggle ───────────────────────────────────────────────────────────────
+
 
 class ParamToggle(QWidget):
     """
@@ -295,12 +302,13 @@ class ParamToggle(QWidget):
         ParamToggle("",       "mic_ns",      bridge)   # no label → toggle only
     """
 
-    def __init__(self, label: str, param: str, bridge: "BridgeCast",
-                 parent: QWidget | None = None) -> None:
+    def __init__(
+        self, label: str, param: str, bridge: BridgeCast, parent: QWidget | None = None
+    ) -> None:
         super().__init__(parent)
-        self._param  = param
+        self._param = param
         self._bridge = bridge
-        self._block  = False
+        self._block = False
 
         row = QHBoxLayout(self)
         row.setContentsMargins(0, 0, 0, 0)
@@ -330,6 +338,7 @@ class ParamToggle(QWidget):
 
 # ── LabeledSlider ─────────────────────────────────────────────────────────────
 
+
 class LabeledSlider(QWidget):
     """
     Compact slider row with a small uppercase caption and a formatted value label:
@@ -348,7 +357,7 @@ class LabeledSlider(QWidget):
         self,
         label: str,
         param: str,
-        bridge: "BridgeCast",
+        bridge: BridgeCast,
         min_val: int,
         max_val: int,
         format_fn: Callable[[int], str] = str,
@@ -359,10 +368,10 @@ class LabeledSlider(QWidget):
         value_width: int = 58,
     ) -> None:
         super().__init__(parent)
-        self._param  = param
+        self._param = param
         self._bridge = bridge
-        self._fmt    = format_fn
-        self._block  = False
+        self._fmt = format_fn
+        self._block = False
 
         vlay = QVBoxLayout(self)
         vlay.setContentsMargins(0, 4, 0, 0)
@@ -370,7 +379,9 @@ class LabeledSlider(QWidget):
 
         if label:
             cap = QLabel(label)
-            cap.setStyleSheet("font-size: 10px; color: #7a7a82; letter-spacing: 0.04em; background-color: transparent;")
+            cap.setStyleSheet(
+                "font-size: 10px; color: #7a7a82; letter-spacing: 0.04em; background-color: transparent;"
+            )
             vlay.addWidget(cap)
 
         row = QHBoxLayout()
@@ -416,6 +427,7 @@ class LabeledSlider(QWidget):
 
 # ── ParamCheck ────────────────────────────────────────────────────────────────
 
+
 class ParamCheck(QCheckBox):
     """
     Plain QCheckBox bound to a bridge boolean parameter (0/1).
@@ -424,12 +436,13 @@ class ParamCheck(QCheckBox):
     pre-date the pill-toggle design (e.g. the Mic Manual EQ enable checkbox).
     """
 
-    def __init__(self, label: str, param: str, bridge: "BridgeCast",
-                 parent: QWidget | None = None) -> None:
+    def __init__(
+        self, label: str, param: str, bridge: BridgeCast, parent: QWidget | None = None
+    ) -> None:
         super().__init__(label, parent)
-        self._param  = param
+        self._param = param
         self._bridge = bridge
-        self._block  = False
+        self._block = False
         self.setChecked(bool(bridge.get_parameter(param)))
         self.toggled.connect(self._on_toggled)
         bridge.parameter_changed.connect(self._on_param)

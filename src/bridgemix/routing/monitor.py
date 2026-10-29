@@ -11,6 +11,7 @@ is not already on its target sink, and only **once** per stream — so a manual
 override the user makes afterwards is never fought.  Per-stream bookkeeping is
 keyed on the sink-input index and pruned as streams disappear.
 """
+
 from __future__ import annotations
 
 from PyQt6.QtCore import QObject, QTimer, pyqtSignal
@@ -25,7 +26,7 @@ class RoutingMonitor(QObject):
 
     def __init__(self, interval_ms: int = 1500, parent: QObject | None = None) -> None:
         super().__init__(parent)
-        self._applied: set[int] = set()   # sink-input indices we've auto-routed
+        self._applied: set[int] = set()  # sink-input indices we've auto-routed
         self._timer = QTimer(self)
         self._timer.setInterval(interval_ms)
         self._timer.timeout.connect(self._tick)
@@ -61,6 +62,6 @@ class RoutingMonitor(QObject):
             if not target:
                 continue
             if s.sink_name == target:
-                self._applied.add(s.index)        # already where it belongs
+                self._applied.add(s.index)  # already where it belongs
             elif backend.move(s.index, target):
                 self._applied.add(s.index)

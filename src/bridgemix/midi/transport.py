@@ -8,8 +8,10 @@ The receive callback runs on a background mido thread.  Callers must
 bounce any UI work back to the Qt main thread (done in bridge_cast.py
 via a queued signal).
 """
+
 from __future__ import annotations
 
+import contextlib
 import logging
 import threading
 from collections.abc import Callable
@@ -48,10 +50,8 @@ class MidiTransport:
         try:
             self._in = mido.open_input(rx_name, callback=self._mido_callback)
         except Exception:
-            try:
+            with contextlib.suppress(Exception):
                 self._out.close()
-            except Exception:
-                pass
             self._out = None
             raise
         log.info("MIDI open: TX=%s  RX=%s", tx_name, rx_name)
@@ -77,19 +77,13 @@ class MidiTransport:
 
         def _do_close() -> None:
             if in_port is not None:
-                try:
+                with contextlib.suppress(Exception):
                     in_port.callback = None
-                except Exception:
-                    pass
-                try:
+                with contextlib.suppress(Exception):
                     in_port.close()
-                except Exception:
-                    pass
             if out_port is not None:
-                try:
+                with contextlib.suppress(Exception):
                     out_port.close()
-                except Exception:
-                    pass
 
         t = threading.Thread(target=_do_close, name="midi-close", daemon=True)
         t.start()

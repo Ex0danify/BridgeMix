@@ -4,6 +4,7 @@ MIDI Monitor panel — live TX/RX log and raw SysEx sender.
 This is the primary debug tool. Shows all frames in both directions with
 decoded parameter labels, and lets the user send arbitrary raw SysEx.
 """
+
 from __future__ import annotations
 
 import time
@@ -31,11 +32,20 @@ if TYPE_CHECKING:
 
 MAX_LOG_LINES = 2000
 
-_SEC_NAMES  = {0x01: "STATUS", 0x02: "GLOBAL", 0x03: "CHAN", 0x7F: "VOICEFX"}
-_TYPE_NAMES = {0x00: "SW", 0x01: "MIC_FX", 0x02: "VOICE", 0x04: "CHAT_FX",
-               0x05: "GAME_FX", 0x06: "DELAY", 0x07: "FADER", 0x08: "LED",
-               0x09: "HOTKEY", 0x7F: "VFX_T"}
-_CMD_NAMES  = {0x11: "RQ1", 0x12: "DT1"}
+_SEC_NAMES = {0x01: "STATUS", 0x02: "GLOBAL", 0x03: "CHAN", 0x7F: "VOICEFX"}
+_TYPE_NAMES = {
+    0x00: "SW",
+    0x01: "MIC_FX",
+    0x02: "VOICE",
+    0x04: "CHAT_FX",
+    0x05: "GAME_FX",
+    0x06: "DELAY",
+    0x07: "FADER",
+    0x08: "LED",
+    0x09: "HOTKEY",
+    0x7F: "VFX_T",
+}
+_CMD_NAMES = {0x11: "RQ1", 0x12: "DT1"}
 
 # Fallback block labels when no specific parameter matches the address.
 # Used for bulk reads/writes whose start address doesn't map to a registered param.
@@ -56,9 +66,9 @@ _BLOCK_NAMES: dict[tuple[int, int], str] = {
     (0x01, 0x00): "Firmware echo",
 }
 
-_COLOR_TX  = "#60a5fa"   # blue  — host → device
-_COLOR_RX  = "#4ade80"   # green — device → host
-_COLOR_ERR = "#f87171"   # red   — errors
+_COLOR_TX = "#60a5fa"  # blue  — host → device
+_COLOR_RX = "#4ade80"  # green — device → host
+_COLOR_ERR = "#f87171"  # red   — errors
 
 
 def _is_heartbeat(data: tuple[int, ...]) -> bool:
@@ -74,9 +84,7 @@ def _is_heartbeat(data: tuple[int, ...]) -> bool:
     if frame["section"] != 0x01:
         return False
     # RX enable/disable: DT1 write to ADDR_STATUS_10 (addr_hi=0x10)
-    if frame["cmd"] == 0x12 and frame["addr_hi"] == 0x10:
-        return False
-    return True
+    return not (frame["cmd"] == 0x12 and frame["addr_hi"] == 0x10)
 
 
 def _describe(data: tuple[int, ...], direction: str, show_payload: bool = False) -> str:
@@ -106,8 +114,12 @@ def _describe(data: tuple[int, ...], direction: str, show_payload: bool = False)
         return f"[{ts}] {direction} ??? {hex_str}…"
 
     # Firmware echo: STATUS type=0x00 addr_hi=0x00 — always expand with raw bytes
-    if (frame["section"] == 0x01 and frame["type"] == 0x00
-            and frame["addr_hi"] == 0x00 and "payload" in frame):
+    if (
+        frame["section"] == 0x01
+        and frame["type"] == 0x00
+        and frame["addr_hi"] == 0x00
+        and "payload" in frame
+    ):
         payload = frame["payload"]
         major = frame["addr_lo"]
         raw = " ".join(f"{b:02X}" for b in payload)
@@ -128,8 +140,8 @@ def _describe(data: tuple[int, ...], direction: str, show_payload: bool = False)
     cmd = _CMD_NAMES.get(frame["cmd"], f"{frame['cmd']:02X}")
     sec = _SEC_NAMES.get(frame["section"], f"{frame['section']:02X}")
     typ = _TYPE_NAMES.get(frame["type"], f"{frame['type']:02X}")
-    hi  = f"{frame['addr_hi']:02X}"
-    lo  = f"{frame['addr_lo']:02X}"
+    hi = f"{frame['addr_hi']:02X}"
+    lo = f"{frame['addr_lo']:02X}"
 
     # Exact parameter name, then block-level fallback for bulk start addresses
     name = lookup_by_address(frame["section"], frame["type"], frame["addr_hi"], frame["addr_lo"])
@@ -156,7 +168,7 @@ def _describe(data: tuple[int, ...], direction: str, show_payload: bool = False)
 
 
 class MidiMonitor(QWidget):
-    def __init__(self, bridge: "BridgeCast", parent: QWidget | None = None) -> None:
+    def __init__(self, bridge: BridgeCast, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self._bridge = bridge
         self._pending: deque[str] = deque(maxlen=MAX_LOG_LINES)

@@ -7,6 +7,7 @@ import threading
 import pytest
 from PyQt6.QtCore import QObject, pyqtSignal
 
+from bridgemix.device.parameters import REGISTRY
 from bridgemix.plugins.device import (
     DeviceFacade,
     DeviceNotConnected,
@@ -14,7 +15,6 @@ from bridgemix.plugins.device import (
     ParameterOutOfRange,
     ParameterReadOnly,
 )
-from bridgemix.device.parameters import REGISTRY
 
 
 class StubBridge(QObject):
@@ -61,6 +61,7 @@ def gateway(qapp):
 
 # ── Validation (no event loop needed: raises before marshalling) ──────────────
 
+
 def test_get_unknown_parameter_raises(gateway):
     with pytest.raises(ParameterNotFound):
         gateway.get_parameter("not_a_real_param")
@@ -87,6 +88,7 @@ def test_set_readonly_raises(gateway):
 
 
 # ── Thread marshalling (worker thread + pumped GUI loop) ──────────────────────
+
 
 def _call_from_worker(qapp, fn):
     """Run *fn* on a worker thread while pumping the GUI loop; return its result."""

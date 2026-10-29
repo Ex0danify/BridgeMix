@@ -14,10 +14,10 @@ from PyQt6.QtCore import QObject, pyqtSignal
 pytest.importorskip("fastapi")
 pytest.importorskip("uvicorn")
 
-from bridgemix.plugins.builtins.remote_api.server import ApiServer  # noqa: E402
-from bridgemix.plugins.device import DeviceFacade  # noqa: E402
-from bridgemix.plugins.builtins.remote_api.settings import ApiSettings  # noqa: E402
 from bridgemix.device.parameters import REGISTRY  # noqa: E402
+from bridgemix.plugins.builtins.remote_api.server import ApiServer  # noqa: E402
+from bridgemix.plugins.builtins.remote_api.settings import ApiSettings  # noqa: E402
+from bridgemix.plugins.device import DeviceFacade  # noqa: E402
 
 
 class StubBridge(QObject):
@@ -79,7 +79,9 @@ def _get_json(url: str):
 
 def _put_json(url: str, body: dict):
     req = urllib.request.Request(
-        url, data=json.dumps(body).encode(), method="PUT",
+        url,
+        data=json.dumps(body).encode(),
+        method="PUT",
         headers={"Content-Type": "application/json"},
     )
     with urllib.request.urlopen(req, timeout=5) as r:

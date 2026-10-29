@@ -4,6 +4,7 @@ Paths come from the XDG_* env vars (with the usual defaults) so they also resolv
 inside a Flatpak sandbox, where Flatpak points them under ~/.var/app/<id>/.
 config_dir() holds small JSON settings; data_dir() holds bulkier app data.
 """
+
 from __future__ import annotations
 
 import os

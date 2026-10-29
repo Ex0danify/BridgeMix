@@ -11,6 +11,7 @@ endpoint and emits a log-frequency magnitude spectrum (~30 fps) for the EQ
 overlay.  All heavy work runs off a QTimer on the GUI thread; the audio callback
 only copies the latest block.
 """
+
 from __future__ import annotations
 
 import logging
@@ -30,10 +31,10 @@ else:
 
 log = logging.getLogger(__name__)
 
-_FFT_SIZE = 4096          # samples per FFT (≈85 ms @ 48 kHz)
+_FFT_SIZE = 4096  # samples per FFT (≈85 ms @ 48 kHz)
 _DEFAULT_RATE = 48000
-_FPS = 45                 # spectrum refresh rate (FFT recomputed from a rolling
-                          # buffer, decoupled from the audio block size)
+_FPS = 45  # spectrum refresh rate (FFT recomputed from a rolling
+# buffer, decoupled from the audio block size)
 
 
 class SpectrumAnalyzer(QObject):
@@ -79,9 +80,9 @@ class SpectrumAnalyzer(QObject):
     # Windows and Linux (UCM2/PipeWire) use different names for the same
     # endpoints.  Map each logical hint to all known OS-specific names.
     _HINT_ALIASES: dict[str, tuple[str, ...]] = {
-        "sub": ("sub", "sfx"),          # Windows: "SUB MIX", Linux UCM2: "SFX"
+        "sub": ("sub", "sfx"),  # Windows: "SUB MIX", Linux UCM2: "SFX"
         "mic": ("mic",),
-        "stream": ("stream",),          # Windows: "STREAM", Linux: "StreamMix"
+        "stream": ("stream",),  # Windows: "STREAM", Linux: "StreamMix"
     }
 
     # On Linux the device exposes one raw multichannel ALSA capture (hw:N,0)
@@ -130,9 +131,7 @@ class SpectrumAnalyzer(QObject):
         """
         if _sd is None:
             return None
-        hints = tuple(
-            h.lower() for h in cls._HINT_ALIASES.get(hint.lower(), (hint,))
-        )
+        hints = tuple(h.lower() for h in cls._HINT_ALIASES.get(hint.lower(), (hint,)))
         try:
             devices = _sd.query_devices()
         except Exception as exc:  # pragma: no cover
@@ -194,9 +193,9 @@ class SpectrumAnalyzer(QObject):
                 device=dev,
                 channels=channels,
                 samplerate=self._rate,
-                blocksize=0,          # let PortAudio pick a low-latency block;
-                latency="low",        # the callback rolls samples into _buf and
-                dtype="float32",      # the FFT is recomputed on the GUI timer.
+                blocksize=0,  # let PortAudio pick a low-latency block;
+                latency="low",  # the callback rolls samples into _buf and
+                dtype="float32",  # the FFT is recomputed on the GUI timer.
                 callback=self._on_audio,
             )
             self._stream.start()
@@ -236,7 +235,7 @@ class SpectrumAnalyzer(QObject):
             log.debug("audio status: %s", status)
         pair = self._channel_pair
         if pair is not None and getattr(indata, "ndim", 1) > 1 and indata.shape[1] > pair[1]:
-            x = indata[:, pair].mean(axis=1)        # extract this mix's L/R pair
+            x = indata[:, pair].mean(axis=1)  # extract this mix's L/R pair
         elif getattr(indata, "ndim", 1) > 1:
             x = indata.mean(axis=1)
         else:

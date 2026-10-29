@@ -6,6 +6,7 @@ carries a truthy ``fullWidth`` Qt property is given the whole row and always sit
 on its own line, so a layout can mix compact cards (natural width, packed side by
 side) with full-span ones.
 """
+
 from __future__ import annotations
 
 from PyQt6.QtCore import QPoint, QRect, QSize, Qt
@@ -64,9 +65,7 @@ class FlowLayout(QLayout):
 
     def _do_layout(self, rect: QRect, test_only: bool) -> int:
         margins = self.contentsMargins()
-        area = rect.adjusted(
-            margins.left(), margins.top(), -margins.right(), -margins.bottom()
-        )
+        area = rect.adjusted(margins.left(), margins.top(), -margins.right(), -margins.bottom())
         x, y, line_height = area.x(), area.y(), 0
         gap = self._spacing
 

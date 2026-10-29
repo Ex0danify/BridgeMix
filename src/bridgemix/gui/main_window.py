@@ -18,6 +18,7 @@ Layout:
   │ [MIDI]   │  9: MidiMonitor                                   │
   └──────────┴───────────────────────────────────────────────────┘
 """
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -72,22 +73,23 @@ class _DisconnectOverlay(QWidget):
         p.fillRect(self.rect(), QColor(10, 10, 12, 200))
         p.end()
 
-from bridgemix.plugins.device import DeviceFacade
-from bridgemix.plugins.manager import PluginManager
+
 from bridgemix.device.bridge_cast import BridgeCast
-from bridgemix.midi.detector import find_device
-from bridgemix.gui.panels.home_page import HomePage
-from bridgemix.gui.panels.plugins import PluginsPanel
 from bridgemix.gui.panels.chat_fx_panel import ChatFxPanel
 from bridgemix.gui.panels.game_fx_panel import GameFxPanel
+from bridgemix.gui.panels.home_page import HomePage
 from bridgemix.gui.panels.mic_fx_panel import MicFxPanel
 from bridgemix.gui.panels.mic_setup_panel import MicSetupPanel
 from bridgemix.gui.panels.mic_sfx_panel import MicSfxPanel
 from bridgemix.gui.panels.midi_monitor import MidiMonitor
 from bridgemix.gui.panels.output_panel import OutputPanel
-from bridgemix.gui.widgets.preset_bar import PresetBar
+from bridgemix.gui.panels.plugins import PluginsPanel
 from bridgemix.gui.panels.routing_panel import RoutingPanel
 from bridgemix.gui.panels.system_panel import SystemPanel
+from bridgemix.gui.widgets.preset_bar import PresetBar
+from bridgemix.midi.detector import find_device
+from bridgemix.plugins.device import DeviceFacade
+from bridgemix.plugins.manager import PluginManager
 from bridgemix.routing.backend import is_supported as routing_is_supported
 from bridgemix.routing.monitor import RoutingMonitor
 
@@ -236,6 +238,7 @@ class MainWindow(QMainWindow):
         # if one exists. force=True hits the network each launch (rather than
         # reusing the day-old cache), falling back to the cache only when offline.
         from bridgemix.updates import UpdateChecker
+
         self._update_checker = UpdateChecker(self)
         self._update_checker.checked.connect(self._on_update_checked)
         self._update_checker.start(force=True)
@@ -250,11 +253,11 @@ class MainWindow(QMainWindow):
         """Blur the main area while the routing drawer is open, to set it apart."""
         self._blur = QGraphicsBlurEffect(self)
         self._blur.setBlurRadius(0.0)
-        self._blur.setEnabled(False)   # no render cost while collapsed
+        self._blur.setEnabled(False)  # no render cost while collapsed
         self._main_area.setGraphicsEffect(self._blur)
 
         self._blur_anim = QPropertyAnimation(self._blur, b"blurRadius", self)
-        self._blur_anim.setDuration(190)   # matches the drawer slide
+        self._blur_anim.setDuration(190)  # matches the drawer slide
         self._blur_anim.setEasingCurve(QEasingCurve.Type.InOutCubic)
         self._blur_anim.finished.connect(self._on_blur_anim_finished)
 
@@ -313,10 +316,12 @@ class MainWindow(QMainWindow):
 
     def _show_about(self) -> None:
         from bridgemix.gui.widgets.about_dialog import AboutDialog
+
         AboutDialog(self).exec()
 
     def _on_update_checked(self, info: object) -> None:
         from bridgemix.updates import UpdateInfo
+
         if not (isinstance(info, UpdateInfo) and info.available):
             return
         self._about_btn.setToolTip(f"Update available: version {info.latest}")
@@ -337,16 +342,16 @@ class MainWindow(QMainWindow):
 
         self._nav_btns: list[QPushButton] = []
         pages = [
-            ("MIXER",     0),
-            ("MIC SET.",  1),
-            ("MIC FX",    2),
-            ("VOICE FX",  3),
-            ("GAME FX",   4),
-            ("CHAT FX",   5),
-            ("OUTPUT",    6),
-            ("SYSTEM",    7),
-            ("PLUGINS",   8),
-            ("MIDI MON",  9),
+            ("MIXER", 0),
+            ("MIC SET.", 1),
+            ("MIC FX", 2),
+            ("VOICE FX", 3),
+            ("GAME FX", 4),
+            ("CHAT FX", 5),
+            ("OUTPUT", 6),
+            ("SYSTEM", 7),
+            ("PLUGINS", 8),
+            ("MIDI MON", 9),
         ]
         for label, idx in pages:
             btn = QPushButton(label)
@@ -368,16 +373,16 @@ class MainWindow(QMainWindow):
         self._stack = QStackedWidget()
         b = self._bridge
 
-        self._stack.addWidget(HomePage(b))        # 0 — main mixer
-        self._stack.addWidget(MicSetupPanel(b))   # 1 — mic input (type + gain + waveform)
-        self._stack.addWidget(MicFxPanel(b))      # 2 — low cut, de-esser, NS, compressor, EQ
-        self._stack.addWidget(MicSfxPanel(b))     # 3 — voice changer + reverb
-        self._stack.addWidget(GameFxPanel(b))     # 4 — limiter, virtual surround, game EQ
-        self._stack.addWidget(ChatFxPanel(b))     # 5 — chat de-esser + compressor
-        self._stack.addWidget(OutputPanel(b))     # 6 — output routing
-        self._stack.addWidget(SystemPanel(b))     # 7 — system settings
+        self._stack.addWidget(HomePage(b))  # 0 — main mixer
+        self._stack.addWidget(MicSetupPanel(b))  # 1 — mic input (type + gain + waveform)
+        self._stack.addWidget(MicFxPanel(b))  # 2 — low cut, de-esser, NS, compressor, EQ
+        self._stack.addWidget(MicSfxPanel(b))  # 3 — voice changer + reverb
+        self._stack.addWidget(GameFxPanel(b))  # 4 — limiter, virtual surround, game EQ
+        self._stack.addWidget(ChatFxPanel(b))  # 5 — chat de-esser + compressor
+        self._stack.addWidget(OutputPanel(b))  # 6 — output routing
+        self._stack.addWidget(SystemPanel(b))  # 7 — system settings
         self._stack.addWidget(PluginsPanel(self._plugin_manager))  # 8 — plugins host
-        self._stack.addWidget(MidiMonitor(b))     # 9 — MIDI debug
+        self._stack.addWidget(MidiMonitor(b))  # 9 — MIDI debug
 
         self._overlay = _DisconnectOverlay(self._stack)
         self._overlay.resize(self._stack.size())
@@ -444,7 +449,7 @@ class MainWindow(QMainWindow):
         box.setInformativeText("Your choice is remembered until you quit BridgeMix.")
         tray_btn = box.addButton("Minimize to Tray", QMessageBox.ButtonRole.AcceptRole)
         quit_btn = box.addButton("Close", QMessageBox.ButtonRole.DestructiveRole)
-        cancel_btn = box.addButton(QMessageBox.StandardButton.Cancel)
+        box.addButton(QMessageBox.StandardButton.Cancel)
         box.setDefaultButton(tray_btn)
         box.exec()
 

@@ -5,6 +5,7 @@ this module is just the typed bundle the server is started with, plus a helper t
 read it back out of the store (validating the port, since the store is
 schema-less).
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass

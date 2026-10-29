@@ -6,6 +6,7 @@ ManifestError, which the manager shows as a failed card instead of crashing.
 
 See doc/PLUGINS.md for the full reference.
 """
+
 from __future__ import annotations
 
 import tomllib
@@ -13,15 +14,13 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from packaging.specifiers import InvalidSpecifier, SpecifierSet
-from packaging.version import InvalidVersion, Version
+from packaging.version import InvalidVersion
 
 MANIFEST_NAME = "plugin.toml"
 
 # Recognised permission tokens. Unknown ones are kept and shown at consent time,
 # not rejected, so a newer plugin still loads on an older host.
-KNOWN_PERMISSIONS = frozenset(
-    {"device.read", "device.write", "network", "filesystem"}
-)
+KNOWN_PERMISSIONS = frozenset({"device.read", "device.write", "network", "filesystem"})
 
 
 class ManifestError(ValueError):
@@ -33,14 +32,14 @@ class PluginManifest:
     id: str
     name: str
     version: str
-    entry_point: str            # "module:ClassName"
+    entry_point: str  # "module:ClassName"
     description: str = ""
     maintainer: str = ""
     homepage: str = ""
     license: str = ""
-    host_api: str = "*"         # version spec; "*" means "any host"
-    requires: tuple[str, ...] = ()       # pip requirement strings
-    permissions: tuple[str, ...] = ()    # declared, shown at consent time
+    host_api: str = "*"  # version spec; "*" means "any host"
+    requires: tuple[str, ...] = ()  # pip requirement strings
+    permissions: tuple[str, ...] = ()  # declared, shown at consent time
 
     @property
     def entry_module(self) -> str:

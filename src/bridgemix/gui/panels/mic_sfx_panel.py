@@ -1,6 +1,7 @@
 """
 Mic SFX panel — Voice FX preset selector, Voice Changer, and Reverb.
 """
+
 from __future__ import annotations
 
 import json
@@ -8,7 +9,7 @@ import math
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from PyQt6.QtCore import Qt, QTimer
+from PyQt6.QtCore import QTimer
 from PyQt6.QtWidgets import (
     QButtonGroup,
     QFileDialog,
@@ -40,7 +41,7 @@ def _fmt_voice(v: int) -> str:
 
 
 class MicSfxPanel(QWidget):
-    def __init__(self, bridge: "BridgeCast", parent: QWidget | None = None) -> None:
+    def __init__(self, bridge: BridgeCast, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self._bridge = bridge
         self._busy = False
@@ -86,14 +87,11 @@ class MicSfxPanel(QWidget):
             "VOICE FX PRESETS",
             num_slots=5,
             load_filter=(
-                "Roland / BridgeMix Voice FX (*.brdgcEfx *.brdgcBackup *.json);;"
-                "All Files (*)"
+                "Roland / BridgeMix Voice FX (*.brdgcEfx *.brdgcBackup *.json);;All Files (*)"
             ),
             parent=self,
         )
-        self._preset_widget.setSizePolicy(
-            QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Maximum
-        )
+        self._preset_widget.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Maximum)
 
         # Preset selection is a two-parameter dance:
         #   • SELECT  → write voice_fx_preset (sec=0x7F type=0x7F addr=0x02), the
@@ -135,13 +133,15 @@ class MicSfxPanel(QWidget):
                 pass
         if applied:
             QMessageBox.information(
-                self, "Loaded",
+                self,
+                "Loaded",
                 f"Applied {applied} voice FX parameters.\n\n"
                 'Use "Write" to save these settings to the preset slot.',
             )
         else:
             QMessageBox.warning(
-                self, "Nothing Loaded",
+                self,
+                "Nothing Loaded",
                 "No recognised voice FX parameters found in the file.",
             )
 
@@ -176,7 +176,8 @@ class MicSfxPanel(QWidget):
         try:
             Path(path).write_text(json.dumps(data, indent=4), encoding="utf-8")
             QMessageBox.information(
-                self, "Exported",
+                self,
+                "Exported",
                 f'Voice FX preset "{name}" saved to {Path(path).name}',
             )
         except Exception as exc:
@@ -203,10 +204,10 @@ class MicSfxPanel(QWidget):
             " background-color: transparent;"
         )
         self._rb_avatar = QRadioButton("Avatar")
-        self._rb_sing   = QRadioButton("Sing")
+        self._rb_sing = QRadioButton("Sing")
         bg = QButtonGroup(self)
         bg.addButton(self._rb_avatar, 0)
-        bg.addButton(self._rb_sing,   1)
+        bg.addButton(self._rb_sing, 1)
         bg.idToggled.connect(self._on_voice_mode)
         (self._rb_sing if b.get_parameter("voice_mode") else self._rb_avatar).setChecked(True)
         self._voice_mode_bg = bg
@@ -217,7 +218,7 @@ class MicSfxPanel(QWidget):
         mode_row.addStretch()
         lay.addLayout(mode_row)
 
-        lay.addWidget(LabeledSlider("PITCH",   "voice_pitch",  b, 0, 127, _fmt_voice))
+        lay.addWidget(LabeledSlider("PITCH", "voice_pitch", b, 0, 127, _fmt_voice))
         lay.addWidget(LabeledSlider("FORMANT", "voice_format", b, 0, 127, _fmt_voice))
         # Trailing stretch so extra vertical height collects at the bottom rather
         # than inflating the Enable toggle row (matches the Reverb group).
@@ -239,7 +240,7 @@ class MicSfxPanel(QWidget):
         b = self._bridge
 
         lay.addWidget(ParamToggle("Enable", "reverb_switch", b))
-        lay.addWidget(LabeledSlider("SIZE",  "reverb_size",  b, 0, 9, lambda v: str(v + 1)))
+        lay.addWidget(LabeledSlider("SIZE", "reverb_size", b, 0, 9, lambda v: str(v + 1)))
         lay.addWidget(LabeledSlider("LEVEL", "reverb_level", b, 0, 9, lambda v: str(v + 1)))
         lay.addStretch()
         return grp

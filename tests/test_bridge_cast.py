@@ -6,6 +6,7 @@ replaced with a recorder that captures the mido tuples that would be sent.
 The frames are decoded with ``sysex.parse`` so assertions read in protocol
 terms (section / type / address / value) rather than raw byte offsets.
 """
+
 from __future__ import annotations
 
 import pytest
@@ -44,8 +45,7 @@ def _bulk_dt1(section, type_, addr_hi, addr_lo, payload):
 
     The trailing checksum byte is not validated by parse(), so 0x00 is fine.
     """
-    return (*_ROLAND_HEADER, 0x12, 0x7F, section, type_, addr_hi, addr_lo,
-            *payload, 0x00)
+    return (*_ROLAND_HEADER, 0x12, 0x7F, section, type_, addr_hi, addr_lo, *payload, 0x00)
 
 
 def _encode_name(text):
@@ -61,12 +61,13 @@ def _encode_name(text):
     for i in range(0, len(raw), 2):
         first = raw[i]
         second = raw[i + 1] if i + 1 < len(raw) else 0
-        stream += [second, first]   # swapped within the pair
-    stream += [0, 0]                 # null pair terminates decoding
+        stream += [second, first]  # swapped within the pair
+    stream += [0, 0]  # null pair terminates decoding
     return stream[0], tuple(stream[1:])
 
 
 # ── set_parameter ───────────────────────────────────────────────────────────
+
 
 def test_set_parameter_sends_correct_frame_and_updates_state(device):
     p = REGISTRY["st_mic_vol"]
@@ -108,6 +109,7 @@ def test_set_parameter_ignores_unknown_name(device):
 
 # ── set_vsurround_angle ───────────────────────────────────────────────────────
 
+
 def test_vsurround_angle_max_wraps_high_bit_into_addr_lo(device):
     # PROTOCOL.md: at 179° the wire is addr_lo=0x01, value=0x33 (the high bit of
     # the angle spills into addr_lo because MIDI data bytes are 7-bit).
@@ -133,6 +135,7 @@ def test_vsurround_angle_rejects_out_of_range(device):
 
 # ── Incoming single-value DT1 (knob turn / unsolicited update) ────────────────
 
+
 def test_incoming_single_value_updates_state_and_emits(device):
     received = []
     device.parameter_changed.connect(lambda n, v: received.append((n, v)))
@@ -156,7 +159,7 @@ def test_incoming_update_suppressed_during_write_guard(device):
     stale = sysex.build_write(p.section, p.param_type, p.addr_hi, p.addr_lo, 0x7F)
     device._on_sysex_received(stale)
 
-    assert device.get_parameter("st_mic_vol") == 0x10   # unchanged
+    assert device.get_parameter("st_mic_vol") == 0x10  # unchanged
     assert received == []
 
 
@@ -170,11 +173,12 @@ def test_incoming_unknown_address_is_ignored(device):
 
 
 def test_garbage_frame_does_not_raise(device):
-    device._on_sysex_received((0x00, 0x01, 0x02))   # too short / non-Roland
-    device._on_sysex_received(())                    # empty
+    device._on_sysex_received((0x00, 0x01, 0x02))  # too short / non-Roland
+    device._on_sysex_received(())  # empty
 
 
 # ── Bulk DT1 dispatch ─────────────────────────────────────────────────────────
+
 
 def test_bulk_frame_dispatches_consecutive_addresses(device):
     # TYPE_FADER stream volumes sit at addr 0x00 (st_mic_vol) and 0x02
@@ -182,7 +186,7 @@ def test_bulk_frame_dispatches_consecutive_addresses(device):
     updates = {}
     device.parameter_changed.connect(lambda n, v: updates.__setitem__(n, v))
 
-    payload = (0x11, 0x00, 0x22)   # offset 0 → st_mic_vol, offset 2 → st_aux_vol
+    payload = (0x11, 0x00, 0x22)  # offset 0 → st_mic_vol, offset 2 → st_aux_vol
     frame = _bulk_dt1(C.SECTION_CHANNEL, C.TYPE_FADER, 0x00, 0x00, payload)
     device._on_sysex_received(frame)
 
@@ -197,7 +201,7 @@ def test_bulk_frame_reconstructs_vsurround_high_bit(device):
     updates = {}
     device.parameter_changed.connect(lambda n, v: updates.__setitem__(n, v))
 
-    payload = (0x00, 0x01, 0x33)   # offset1=high bit, offset2=0x33 ⇒ 179°
+    payload = (0x00, 0x01, 0x33)  # offset1=high bit, offset2=0x33 ⇒ 179°
     frame = _bulk_dt1(C.SECTION_CHANNEL, C.TYPE_GAME_FX, 0x14, 0x00, payload)
     device._on_sysex_received(frame)
 
@@ -205,6 +209,7 @@ def test_bulk_frame_reconstructs_vsurround_high_bit(device):
 
 
 # ── Name decoders ─────────────────────────────────────────────────────────────
+
 
 def test_voice_preset_name_decoded_from_sync10(device):
     captured = []
@@ -242,6 +247,7 @@ def test_profile_name_decoded_from_profile_section(device):
 
 
 # ── State vector (heartbeat reply) ────────────────────────────────────────────
+
 
 def _state_vector(mido_bytes=None, length=125):
     """Build a STATUS type=0x10 addr=0x00 state-vector frame of `length` bytes.
@@ -286,8 +292,13 @@ def test_state_vector_too_short_is_ignored(device):
 
 def test_status10_continuation_caches_phones_and_line(device):
     # sec=0x01 type=0x10 addr_hi=0x70: addr_lo + payload carry the trimmed tail.
-    frame = _bulk_dt1(C.SECTION_STATUS, C.SUBTYPE_STATUS_10,
-                      C.METER_ADDR_CONTINUATION, 0x01, (0x02, 0x03, 0x04, 0x05, 0x06))
+    frame = _bulk_dt1(
+        C.SECTION_STATUS,
+        C.SUBTYPE_STATUS_10,
+        C.METER_ADDR_CONTINUATION,
+        0x01,
+        (0x02, 0x03, 0x04, 0x05, 0x06),
+    )
     device._on_sysex_received(frame)
 
     assert device._cached_phones_R == (0x01 << 7) | 0x02
@@ -295,6 +306,7 @@ def test_status10_continuation_caches_phones_and_line(device):
 
 
 # ── Device identification ─────────────────────────────────────────────────────
+
 
 def test_identity_reply_emits_device_info(device):
     captured = []
@@ -306,8 +318,8 @@ def test_identity_reply_emits_device_info(device):
 
     assert len(captured) == 1
     model, fw = captured[0]
-    assert "0x" in model          # unknown family/member ⇒ raw hex fallback
-    assert fw == "3.00"           # BCD-style firmware (3, 0)
+    assert "0x" in model  # unknown family/member ⇒ raw hex fallback
+    assert fw == "3.00"  # BCD-style firmware (3, 0)
 
 
 def test_firmware_echo_modern_fw3_emits_once_then_dedupes(device):
@@ -320,11 +332,11 @@ def test_firmware_echo_modern_fw3_emits_once_then_dedupes(device):
     captured = []
     device.device_info_updated.connect(lambda m, f: captured.append((m, f)))
 
-    payload = (0x00, 0x00, 0x73, 0x03, 0x00, 0x00)   # 6 bytes (< 8 ⇒ V2 branch)
+    payload = (0x00, 0x00, 0x73, 0x03, 0x00, 0x00)  # 6 bytes (< 8 ⇒ V2 branch)
     echo = _bulk_dt1(C.SECTION_STATUS, 0x00, 0x00, 0x03, payload)  # major=3
 
     device._on_sysex_received(echo)
-    device._on_sysex_received(echo)   # identical ⇒ no second emit
+    device._on_sysex_received(echo)  # identical ⇒ no second emit
 
     assert captured == [("Bridge Cast V2", "3.00 (115)")]
 

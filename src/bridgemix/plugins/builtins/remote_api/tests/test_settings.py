@@ -1,10 +1,11 @@
 """Tests for reading Remote API settings out of a plugin store (``from_store``)."""
+
 from __future__ import annotations
 
 from bridgemix.plugins.builtins.remote_api.settings import (
-    ApiSettings,
     DEFAULT_HOST,
     DEFAULT_PORT,
+    ApiSettings,
     from_store,
 )
 

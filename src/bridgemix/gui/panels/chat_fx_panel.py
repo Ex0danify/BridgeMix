@@ -1,6 +1,7 @@
 """
 Chat FX panel — De-esser, Compressor.
 """
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
@@ -20,17 +21,47 @@ if TYPE_CHECKING:
 
 from bridgemix.gui.widgets.controls import LabeledSlider, ParamToggle
 
-
 # ── Value-format helpers ───────────────────────────────────────────────────────
 
 _COMP_RATIOS = [
-    "1.00:1", "1.12:1", "1.25:1", "1.40:1", "1.60:1", "1.80:1", "2.00:1",
-    "2.50:1", "3.20:1", "4.00:1", "5.60:1", "8.00:1", "16.0:1", "Inf:1",
+    "1.00:1",
+    "1.12:1",
+    "1.25:1",
+    "1.40:1",
+    "1.60:1",
+    "1.80:1",
+    "2.00:1",
+    "2.50:1",
+    "3.20:1",
+    "4.00:1",
+    "5.60:1",
+    "8.00:1",
+    "16.0:1",
+    "Inf:1",
 ]
 
 _RELEASE_MS = [
-    50, 60, 80, 100, 130, 160, 200, 250, 320, 400, 500,
-    640, 800, 1000, 1250, 1600, 2000, 2500, 3200, 4000, 5000,
+    50,
+    60,
+    80,
+    100,
+    130,
+    160,
+    200,
+    250,
+    320,
+    400,
+    500,
+    640,
+    800,
+    1000,
+    1250,
+    1600,
+    2000,
+    2500,
+    3200,
+    4000,
+    5000,
 ]
 
 
@@ -57,8 +88,9 @@ def _fmt_post_gain(v: int) -> str:
 
 # ── Main panel ────────────────────────────────────────────────────────────────
 
+
 class ChatFxPanel(QWidget):
-    def __init__(self, bridge: "BridgeCast", parent: QWidget | None = None) -> None:
+    def __init__(self, bridge: BridgeCast, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self._bridge = bridge
 
@@ -99,11 +131,25 @@ class ChatFxPanel(QWidget):
         lay.setSpacing(6)
 
         lay.addWidget(ParamToggle("Enable", "chat_compressor", self._bridge))
-        lay.addWidget(LabeledSlider("THRESHOLD", "chat_compressor_threshold", self._bridge, 0, 0x10, _fmt_threshold))
-        lay.addWidget(LabeledSlider("RATIO",     "chat_compressor_ratio",     self._bridge, 0, 0x0D, _fmt_ratio))
-        lay.addWidget(LabeledSlider("ATTACK",    "chat_compressor_attack",    self._bridge, 0, 0x0A, _fmt_attack))
-        lay.addWidget(LabeledSlider("RELEASE",   "chat_compressor_release",   self._bridge, 0, 0x14, _fmt_release))
-        lay.addWidget(LabeledSlider("POST GAIN", "chat_compressor_post_gain", self._bridge, 0, 0x1E, _fmt_post_gain))
+        lay.addWidget(
+            LabeledSlider(
+                "THRESHOLD", "chat_compressor_threshold", self._bridge, 0, 0x10, _fmt_threshold
+            )
+        )
+        lay.addWidget(
+            LabeledSlider("RATIO", "chat_compressor_ratio", self._bridge, 0, 0x0D, _fmt_ratio)
+        )
+        lay.addWidget(
+            LabeledSlider("ATTACK", "chat_compressor_attack", self._bridge, 0, 0x0A, _fmt_attack)
+        )
+        lay.addWidget(
+            LabeledSlider("RELEASE", "chat_compressor_release", self._bridge, 0, 0x14, _fmt_release)
+        )
+        lay.addWidget(
+            LabeledSlider(
+                "POST GAIN", "chat_compressor_post_gain", self._bridge, 0, 0x1E, _fmt_post_gain
+            )
+        )
         lay.addStretch()
         return grp
 
@@ -116,8 +162,15 @@ class ChatFxPanel(QWidget):
         lay.setSpacing(6)
 
         lay.addWidget(ParamToggle("Enable", "chat_de_esser", self._bridge))
-        lay.addWidget(LabeledSlider(
-            "DEPTH", "chat_de_esser_depth", self._bridge, 0, 9, lambda v: str(v + 1),
-        ))
+        lay.addWidget(
+            LabeledSlider(
+                "DEPTH",
+                "chat_de_esser_depth",
+                self._bridge,
+                0,
+                9,
+                lambda v: str(v + 1),
+            )
+        )
         lay.addStretch()
         return grp

@@ -13,11 +13,12 @@ Layout inside each card:
   │  └──────┘  └──────┘  └────┘             │
   └──────────────────────────────────────────┘
 """
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from PyQt6.QtCore import QRectF, QTimer, Qt, pyqtSignal
+from PyQt6.QtCore import QRectF, Qt, QTimer, pyqtSignal
 from PyQt6.QtGui import QColor, QLinearGradient, QPainter, QPen
 from PyQt6.QtWidgets import (
     QFrame,
@@ -31,7 +32,8 @@ from PyQt6.QtWidgets import (
 
 from bridgemix.device import constants as C
 from bridgemix.gui.icons import dot_pixmap
-from bridgemix.gui.widgets.controls import PeakMeter, ScrollGuardComboBox, Slider as _Slider
+from bridgemix.gui.widgets.controls import PeakMeter, ScrollGuardComboBox
+from bridgemix.gui.widgets.controls import Slider as _Slider
 
 if TYPE_CHECKING:
     from bridgemix.device.bridge_cast import BridgeCast
@@ -39,7 +41,7 @@ if TYPE_CHECKING:
 FADER_MIN = 0
 FADER_MAX = 0x7F
 FADER_DEFAULT = 0x40
-METER_MAX = C.METER_FULL_SCALE   # device 0 dBFS reference (not the raw 14-bit ceiling)
+METER_MAX = C.METER_FULL_SCALE  # device 0 dBFS reference (not the raw 14-bit ceiling)
 
 # Rainbow slider range: 0 = White, 1-192 = hue spectrum ending at Red
 RAINBOW_MAX = 192
@@ -58,16 +60,17 @@ def _to_pastel(css: str) -> str:
     b = round(b + (255 - b) * _PASTEL_BLEND)
     return f"#{r:02x}{g:02x}{b:02x}"
 
+
 # Key colour stops for the rainbow slider (slider value, (R, G, B) in 0-255 space).
 # Defines: 0=White → 32=Orange → 64=Yellow → 96=Green → 128=Blue → 160=Purple → 192=Red
 _RAINBOW_VALUE_STOPS: list[tuple[int, tuple[int, int, int]]] = [
-    (0,   (255, 255, 255)),  # White
-    (32,  (255, 128,   0)),  # Orange
-    (64,  (255, 255,   0)),  # Yellow
-    (96,  (  0, 255,   0)),  # Green
-    (128, (  0,   0, 255)),  # Blue
-    (160, (160,   0, 255)),  # Purple
-    (192, (255,   0,   0)),  # Red
+    (0, (255, 255, 255)),  # White
+    (32, (255, 128, 0)),  # Orange
+    (64, (255, 255, 0)),  # Yellow
+    (96, (0, 255, 0)),  # Green
+    (128, (0, 0, 255)),  # Blue
+    (160, (160, 0, 255)),  # Purple
+    (192, (255, 0, 0)),  # Red
 ]
 
 # Override display names for channel keys where uppercase isn't the right label.
@@ -75,44 +78,44 @@ _CH_DISPLAY: dict[str, str] = {"sys": "SYSTEM"}
 
 # (display label, STRIP_BUTTON_ACTION_* value) — ordered to match reference UI
 _BUTTON_ACTION_ITEMS: list[tuple[str, int]] = [
-    ("Channel Mute All",      C.STRIP_BUTTON_ACTION_CHANNEL_MUTE_ALL),
-    ("Channel Mute Stream",   C.STRIP_BUTTON_ACTION_CHANNEL_MUTE_STREAM),
+    ("Channel Mute All", C.STRIP_BUTTON_ACTION_CHANNEL_MUTE_ALL),
+    ("Channel Mute Stream", C.STRIP_BUTTON_ACTION_CHANNEL_MUTE_STREAM),
     ("Channel Mute Personal", C.STRIP_BUTTON_ACTION_CHANNEL_MUTE_PERS),
-    ("SFX A",                 C.STRIP_BUTTON_ACTION_SFX_A),
-    ("SFX B",                 C.STRIP_BUTTON_ACTION_SFX_B),
-    ("SFX Beep",              C.STRIP_BUTTON_ACTION_SFX_BEEP),
-    ("Mute Output All",       C.STRIP_BUTTON_ACTION_MUTE_OUT_ALL),
-    ("Mute Output Stream",    C.STRIP_BUTTON_ACTION_MUTE_OUT_STREAM),
-    ("Mute Output Line-Out",  C.STRIP_BUTTON_ACTION_MUTE_OUT_LINE),
-    ("Mute Output Phones",    C.STRIP_BUTTON_ACTION_MUTE_OUT_PHONES),
-    ("Profile 1",             C.STRIP_BUTTON_ACTION_PROFILE_1),
-    ("Profile 2",             C.STRIP_BUTTON_ACTION_PROFILE_2),
-    ("Profile 3",             C.STRIP_BUTTON_ACTION_PROFILE_3),
-    ("Profile 4",             C.STRIP_BUTTON_ACTION_PROFILE_4),
-    ("Profile 5",             C.STRIP_BUTTON_ACTION_PROFILE_5),
-    ("Game EQ 1",             C.STRIP_BUTTON_ACTION_GAME_EQ_1),
-    ("Game EQ 2",             C.STRIP_BUTTON_ACTION_GAME_EQ_2),
-    ("Game EQ 3",             C.STRIP_BUTTON_ACTION_GAME_EQ_3),
-    ("Game EQ 4",             C.STRIP_BUTTON_ACTION_GAME_EQ_4),
-    ("Game EQ 5",             C.STRIP_BUTTON_ACTION_GAME_EQ_5),
-    ("Game EQ Off",           C.STRIP_BUTTON_ACTION_GAME_EQ_OFF),
-    ("Mic FX 1",              C.STRIP_BUTTON_ACTION_MIC_FX_1),
-    ("Mic FX 2",              C.STRIP_BUTTON_ACTION_MIC_FX_2),
-    ("Mic FX 3",              C.STRIP_BUTTON_ACTION_MIC_FX_3),
-    ("Mic FX 4",              C.STRIP_BUTTON_ACTION_MIC_FX_4),
-    ("Mic FX 5",              C.STRIP_BUTTON_ACTION_MIC_FX_5),
-    ("MIDI CC 1",             C.STRIP_BUTTON_ACTION_MIDI_CC_1),
-    ("MIDI CC 2",             C.STRIP_BUTTON_ACTION_MIDI_CC_2),
-    ("MIDI CC 3",             C.STRIP_BUTTON_ACTION_MIDI_CC_3),
-    ("MIDI CC 4",             C.STRIP_BUTTON_ACTION_MIDI_CC_4),
-    ("BGM SFX A",             C.STRIP_BUTTON_ACTION_BGM_SFX_A),
-    ("BGM SFX B",             C.STRIP_BUTTON_ACTION_BGM_SFX_B),
-    ("BGM SFX C",             C.STRIP_BUTTON_ACTION_BGM_SFX_C),
-    ("BGM SFX D",             C.STRIP_BUTTON_ACTION_BGM_SFX_D),
-    ("Hot Key",               C.STRIP_BUTTON_ACTION_HOT_KEY),
-    ("Reverb",                C.STRIP_BUTTON_ACTION_REVERB),
-    ("BGM Cast Play/Stop",    C.STRIP_BUTTON_ACTION_BGM_CAST_PLAY_STOP),
-    ("BGM Cast Next Song",    C.STRIP_BUTTON_ACTION_BGM_CAST_NEXT),
+    ("SFX A", C.STRIP_BUTTON_ACTION_SFX_A),
+    ("SFX B", C.STRIP_BUTTON_ACTION_SFX_B),
+    ("SFX Beep", C.STRIP_BUTTON_ACTION_SFX_BEEP),
+    ("Mute Output All", C.STRIP_BUTTON_ACTION_MUTE_OUT_ALL),
+    ("Mute Output Stream", C.STRIP_BUTTON_ACTION_MUTE_OUT_STREAM),
+    ("Mute Output Line-Out", C.STRIP_BUTTON_ACTION_MUTE_OUT_LINE),
+    ("Mute Output Phones", C.STRIP_BUTTON_ACTION_MUTE_OUT_PHONES),
+    ("Profile 1", C.STRIP_BUTTON_ACTION_PROFILE_1),
+    ("Profile 2", C.STRIP_BUTTON_ACTION_PROFILE_2),
+    ("Profile 3", C.STRIP_BUTTON_ACTION_PROFILE_3),
+    ("Profile 4", C.STRIP_BUTTON_ACTION_PROFILE_4),
+    ("Profile 5", C.STRIP_BUTTON_ACTION_PROFILE_5),
+    ("Game EQ 1", C.STRIP_BUTTON_ACTION_GAME_EQ_1),
+    ("Game EQ 2", C.STRIP_BUTTON_ACTION_GAME_EQ_2),
+    ("Game EQ 3", C.STRIP_BUTTON_ACTION_GAME_EQ_3),
+    ("Game EQ 4", C.STRIP_BUTTON_ACTION_GAME_EQ_4),
+    ("Game EQ 5", C.STRIP_BUTTON_ACTION_GAME_EQ_5),
+    ("Game EQ Off", C.STRIP_BUTTON_ACTION_GAME_EQ_OFF),
+    ("Mic FX 1", C.STRIP_BUTTON_ACTION_MIC_FX_1),
+    ("Mic FX 2", C.STRIP_BUTTON_ACTION_MIC_FX_2),
+    ("Mic FX 3", C.STRIP_BUTTON_ACTION_MIC_FX_3),
+    ("Mic FX 4", C.STRIP_BUTTON_ACTION_MIC_FX_4),
+    ("Mic FX 5", C.STRIP_BUTTON_ACTION_MIC_FX_5),
+    ("MIDI CC 1", C.STRIP_BUTTON_ACTION_MIDI_CC_1),
+    ("MIDI CC 2", C.STRIP_BUTTON_ACTION_MIDI_CC_2),
+    ("MIDI CC 3", C.STRIP_BUTTON_ACTION_MIDI_CC_3),
+    ("MIDI CC 4", C.STRIP_BUTTON_ACTION_MIDI_CC_4),
+    ("BGM SFX A", C.STRIP_BUTTON_ACTION_BGM_SFX_A),
+    ("BGM SFX B", C.STRIP_BUTTON_ACTION_BGM_SFX_B),
+    ("BGM SFX C", C.STRIP_BUTTON_ACTION_BGM_SFX_C),
+    ("BGM SFX D", C.STRIP_BUTTON_ACTION_BGM_SFX_D),
+    ("Hot Key", C.STRIP_BUTTON_ACTION_HOT_KEY),
+    ("Reverb", C.STRIP_BUTTON_ACTION_REVERB),
+    ("BGM Cast Play/Stop", C.STRIP_BUTTON_ACTION_BGM_CAST_PLAY_STOP),
+    ("BGM Cast Next Song", C.STRIP_BUTTON_ACTION_BGM_CAST_NEXT),
 ]
 
 
@@ -125,9 +128,9 @@ class _KnobToggle(QWidget):
 
     toggled = pyqtSignal(bool)
 
-    _ACCENT  = QColor(0xe0, 0x5c, 0x12)
-    _KNOB_W  = 16
-    _H       = 10
+    _ACCENT = QColor(0xE0, 0x5C, 0x12)
+    _KNOB_W = 16
+    _H = 10
 
     def __init__(self, checked: bool = False, parent: QWidget | None = None) -> None:
         super().__init__(parent)
@@ -189,7 +192,9 @@ class _FaderCol(QWidget):
 
         hdr = QLabel(bus_label)
         hdr.setAlignment(Qt.AlignmentFlag.AlignHCenter)
-        hdr.setStyleSheet("color: #7a7a82; font-size: 10px; font-weight: 600; letter-spacing: 0.05em; background-color: transparent;")
+        hdr.setStyleSheet(
+            "color: #7a7a82; font-size: 10px; font-weight: 600; letter-spacing: 0.05em; background-color: transparent;"
+        )
         lay.addWidget(hdr)
 
         # Always created; hidden when the assigned channel has no mute param.
@@ -293,12 +298,12 @@ class _RainbowSlider(QWidget):
     # Gradient stops (paint position 0.0=top → 1.0=bottom, QColor).
     # Top = high value (Red=192), Bottom = low value (White=0).
     _GRADIENT_STOPS = [
-        (0.000, QColor(255,   0,   0)),  # Red    (value 192)
-        (0.167, QColor(160,   0, 255)),  # Purple (value ~160)
-        (0.333, QColor(  0,   0, 255)),  # Blue   (value ~128)
-        (0.500, QColor(  0, 255,   0)),  # Green  (value  ~96)
-        (0.667, QColor(255, 255,   0)),  # Yellow (value  ~64)
-        (0.833, QColor(255, 128,   0)),  # Orange (value  ~32)
+        (0.000, QColor(255, 0, 0)),  # Red    (value 192)
+        (0.167, QColor(160, 0, 255)),  # Purple (value ~160)
+        (0.333, QColor(0, 0, 255)),  # Blue   (value ~128)
+        (0.500, QColor(0, 255, 0)),  # Green  (value  ~96)
+        (0.667, QColor(255, 255, 0)),  # Yellow (value  ~64)
+        (0.833, QColor(255, 128, 0)),  # Orange (value  ~32)
         (1.000, QColor(255, 255, 255)),  # White  (value    0)
     ]
 
@@ -394,7 +399,6 @@ class _RainbowSlider(QWidget):
         return (round(r * scale), round(g * scale), round(b * scale))
 
 
-
 class InputStrip(QFrame):
     """
     Hardware channel strip card. Manages its own bridge connections.
@@ -406,14 +410,14 @@ class InputStrip(QFrame):
     """
 
     channel_assignment_requested = pyqtSignal(str)  # emits new channel key
-    color_changed = pyqtSignal(str)                 # CSS hex — emitted when accent colour changes
+    color_changed = pyqtSignal(str)  # CSS hex — emitted when accent colour changes
 
     def __init__(
         self,
         ch_key: str,
         label: str,
         color: str,
-        bridge: "BridgeCast",
+        bridge: BridgeCast,
         st_vol_param: str,
         ps_vol_param: str,
         st_mute_param: str | None,
@@ -431,10 +435,12 @@ class InputStrip(QFrame):
 
         self._bridge = bridge
         self._ch_key = ch_key
-        self._led_ch_key = ch_key          # physical strip position; never changes
-        self._color = color                # current accent CSS color
+        self._led_ch_key = ch_key  # physical strip position; never changes
+        self._color = color  # current accent CSS color
         self._strip_index = strip_index
-        self._btn_action_param = f"strip{strip_index + 1}_button_action" if strip_index is not None else None
+        self._btn_action_param = (
+            f"strip{strip_index + 1}_button_action" if strip_index is not None else None
+        )
         self._all_channels = all_channels
         self._st_vol = st_vol_param
         self._ps_vol = ps_vol_param
@@ -805,8 +811,8 @@ class MicInputStrip(InputStrip):
         grp_lay = QHBoxLayout(self._mic_grp)
         grp_lay.setContentsMargins(2, 2, 2, 2)
         grp_lay.setSpacing(8)
-        grp_lay.addWidget(self._raw_col)   # Direct on the left
-        grp_lay.addWidget(self._hp_col)    # Personal on the right
+        grp_lay.addWidget(self._raw_col)  # Direct on the left
+        grp_lay.addWidget(self._hp_col)  # Personal on the right
 
         # Wire ps_wrapper so the base class knows which frame to highlight
         self._ps_wrapper = self._mic_grp
@@ -834,7 +840,7 @@ class MicInputStrip(InputStrip):
         ch_key: str,
         label: str,
         color: str,
-        bridge: "BridgeCast",
+        bridge: BridgeCast,
         st_vol_param: str,
         ps_vol_param: str,
         st_mute_param: str | None,
@@ -847,9 +853,19 @@ class MicInputStrip(InputStrip):
     ) -> None:
         # _build_pers_section is called inside super().__init__, creating _raw_col etc.
         super().__init__(
-            ch_key, label, color, bridge,
-            st_vol_param, ps_vol_param, st_mute_param, ps_mute_param,
-            st_meter_key, ps_meter_key, all_channels, strip_index, parent,
+            ch_key,
+            label,
+            color,
+            bridge,
+            st_vol_param,
+            ps_vol_param,
+            st_mute_param,
+            ps_mute_param,
+            st_meter_key,
+            ps_meter_key,
+            all_channels,
+            strip_index,
+            parent,
         )
 
         # Init Direct fader, mute, and toggle from bridge (self._bridge is now set)
@@ -862,7 +878,7 @@ class MicInputStrip(InputStrip):
 
         # Direct fader + toggle only visible when this strip is assigned the MIC channel.
         # _mic_grp itself stays visible — it always contains Personal.
-        is_mic = (ch_key == self._MIC_CH)
+        is_mic = ch_key == self._MIC_CH
         self._raw_col.setVisible(is_mic)
         self._knob_toggle.setVisible(is_mic)
 
@@ -930,10 +946,17 @@ class MicInputStrip(InputStrip):
         ps_meter_key: str,
     ) -> None:
         super().rebind(
-            ch_key, label, color, st_vol_param, ps_vol_param,
-            st_mute_param, ps_mute_param, st_meter_key, ps_meter_key,
+            ch_key,
+            label,
+            color,
+            st_vol_param,
+            ps_vol_param,
+            st_mute_param,
+            ps_mute_param,
+            st_meter_key,
+            ps_meter_key,
         )
-        is_mic = (ch_key == self._MIC_CH)
+        is_mic = ch_key == self._MIC_CH
         self._raw_col.setVisible(is_mic)
         self._knob_toggle.setVisible(is_mic)
         QTimer.singleShot(0, self._sync_toggle_width)

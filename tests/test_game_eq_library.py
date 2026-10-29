@@ -1,4 +1,5 @@
 """Tests for the Game EQ preset library (``bridgemix.preset.game_eq_library``)."""
+
 from __future__ import annotations
 
 import json
@@ -38,11 +39,14 @@ def test_save_and_load_round_trip(tmp_library):
 
 def test_save_filters_out_of_range_and_noncurve(tmp_library):
     bad_gain = REGISTRY["game_eq_band1_gain"].max_value + 1
-    path = lib.save_library_preset("X", {
-        "game_eq_band1_gain": bad_gain,   # out of range → dropped
-        "st_mic_vol": 50,                  # not a curve param → dropped
-        "game_eq_enable": 1,               # valid
-    })
+    path = lib.save_library_preset(
+        "X",
+        {
+            "game_eq_band1_gain": bad_gain,  # out of range → dropped
+            "st_mic_vol": 50,  # not a curve param → dropped
+            "game_eq_enable": 1,  # valid
+        },
+    )
     stored = json.loads(path.read_text())["parameters"]
     assert stored == {"game_eq_enable": 1}
 
@@ -58,6 +62,7 @@ def test_list_includes_factory_presets(tmp_library):
     names = lib.list_library()
     assert len(names) > 0
     from bridgemix.preset.game_eq_factory import FACTORY_PRESETS
+
     for fname in FACTORY_PRESETS:
         assert fname in names
 
@@ -79,6 +84,7 @@ def test_delete_missing_returns_false(tmp_library):
 
 def test_load_factory_preset_by_name(tmp_library):
     from bridgemix.preset.game_eq_factory import FACTORY_PRESETS
+
     name = next(iter(FACTORY_PRESETS))
     loaded = lib.load_library_preset(name)
     assert isinstance(loaded, dict)
@@ -92,6 +98,7 @@ def test_load_missing_raises(tmp_library):
 
 def test_user_file_overrides_factory(tmp_library):
     from bridgemix.preset.game_eq_factory import FACTORY_PRESETS
+
     name = next(iter(FACTORY_PRESETS))
     # Saving under a factory name should make load return the user's params.
     lib.save_library_preset(name, {"game_eq_enable": 0})

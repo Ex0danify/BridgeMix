@@ -1,11 +1,11 @@
-﻿"""Entry point: python -m bridgemix"""
+"""Entry point: python -m bridgemix"""
 
 import sys
 
 from PyQt6.QtWidgets import QApplication
 
-from bridgemix.theme import APP_STYLESHEET
 from bridgemix.gui.main_window import MainWindow
+from bridgemix.theme import APP_STYLESHEET
 
 
 def main() -> None:

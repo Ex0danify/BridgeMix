@@ -10,6 +10,7 @@ The JSON parsers (`parse_targets`, `parse_streams`) are pure functions over
 already-decoded ``pactl`` output, so they are unit-tested without a sound server.
 The thin `_run_json` / `move` wrappers are the only parts that shell out.
 """
+
 from __future__ import annotations
 
 import json
@@ -35,24 +36,25 @@ _LR_SUFFIX_RE = re.compile(r"\s*(l/r|stereo)\s*$", re.IGNORECASE)
 class Target:
     """A Bridge Cast output channel a stream can be routed to."""
 
-    sink_name: str   # PulseAudio sink name (stable identifier for `move`)
-    label: str       # short channel name, e.g. "Chat", "Game"
-    sort_key: int    # ordering hint (the device's LineN index)
+    sink_name: str  # PulseAudio sink name (stable identifier for `move`)
+    label: str  # short channel name, e.g. "Chat", "Game"
+    sort_key: int  # ordering hint (the device's LineN index)
 
 
 @dataclass(frozen=True)
 class Stream:
     """An application stream currently producing audio (a sink-input)."""
 
-    index: int            # PulseAudio sink-input index (changes per stream)
-    app_key: str          # stable key for rules: process binary / app name
-    label: str            # display name, e.g. "Discord"
-    media: str            # current media title (tooltip), may be ""
+    index: int  # PulseAudio sink-input index (changes per stream)
+    app_key: str  # stable key for rules: process binary / app name
+    label: str  # display name, e.g. "Discord"
+    media: str  # current media title (tooltip), may be ""
     sink_name: str | None  # name of the sink it is currently on
-    icon: str             # freedesktop icon name hint (application.icon_name), may be ""
+    icon: str  # freedesktop icon name hint (application.icon_name), may be ""
 
 
 # ── pure parsers ──────────────────────────────────────────────────────────────
+
 
 def _is_bridge_sink(name: str, props: dict) -> bool:
     desc = str(props.get("device.description", "")).lower()
@@ -90,9 +92,7 @@ def parse_streams(sink_inputs: list[dict], sink_name_by_index: dict[int, str]) -
     for si in sink_inputs:
         props = si.get("properties", {}) or {}
         app_key = (
-            props.get("application.process.binary")
-            or props.get("application.name")
-            or "unknown"
+            props.get("application.process.binary") or props.get("application.name") or "unknown"
         )
         label = props.get("application.name") or app_key
         media = props.get("media.name") or ""
@@ -104,6 +104,7 @@ def parse_streams(sink_inputs: list[dict], sink_name_by_index: dict[int, str]) -
 
 
 # ── pactl wrappers ────────────────────────────────────────────────────────────
+
 
 def available() -> bool:
     """True if the `pactl` CLI is present (PulseAudio or PipeWire)."""
@@ -125,7 +126,10 @@ def _run_json(args: list[str]) -> list[dict]:
     try:
         out = subprocess.run(
             ["pactl", "--format=json", *args],
-            capture_output=True, text=True, timeout=4, check=True,
+            capture_output=True,
+            text=True,
+            timeout=4,
+            check=True,
         ).stdout
         data = json.loads(out)
         return data if isinstance(data, list) else []
@@ -149,7 +153,10 @@ def move(stream_index: int, sink_name: str) -> bool:
     try:
         subprocess.run(
             ["pactl", "move-sink-input", str(stream_index), sink_name],
-            capture_output=True, text=True, timeout=4, check=True,
+            capture_output=True,
+            text=True,
+            timeout=4,
+            check=True,
         )
         return True
     except (OSError, subprocess.SubprocessError) as exc:

@@ -15,6 +15,7 @@ Layout:
   │ └───────────────────────────────┘  └────────────────────────────┘│
   └───────────────────────────────────────────────────────────────────┘
 """
+
 from __future__ import annotations
 
 import math
@@ -43,7 +44,7 @@ from bridgemix.theme import ACCENT, CHANNEL_COLORS, TEXT_MUTED
 if TYPE_CHECKING:
     from bridgemix.device.bridge_cast import BridgeCast
 
-METER_MAX = C.METER_FULL_SCALE   # device 0 dBFS reference (not the raw 14-bit ceiling)
+METER_MAX = C.METER_FULL_SCALE  # device 0 dBFS reference (not the raw 14-bit ceiling)
 
 # All assignable logical channels (order determines combo display order).
 ALL_CHANNELS = ["mic", "aux", "chat", "game", "music", "sys", "sfx"]
@@ -113,13 +114,69 @@ def _pick_virtual_colors(hw_colors: list[str], n: int) -> list[str]:
 
 # Per-channel parameter names.  st_mk / ps_mk are meter keys for bridge.meter_updated.
 _CHANNEL_PARAMS: dict[str, dict] = {
-    "mic":   dict(label="MIC",   st_vol="st_mic_vol",   ps_vol="ps_mic_vol",   st_mute="st_mic_mute",   ps_mute="ps_mic_mute",   st_mk="st_mic",   ps_mk="ps_mic"),
-    "aux":   dict(label="AUX",   st_vol="st_aux_vol",   ps_vol="ps_aux_vol",   st_mute="st_aux_mute",   ps_mute="ps_aux_mute",   st_mk="st_aux",   ps_mk="ps_aux"),
-    "chat":  dict(label="CHAT",  st_vol="st_chat_vol",  ps_vol="ps_chat_vol",  st_mute="st_chat_mute",  ps_mute="ps_chat_mute",  st_mk="st_chat",  ps_mk="ps_chat"),
-    "game":  dict(label="GAME",  st_vol="st_game_vol",  ps_vol="ps_game_vol",  st_mute="st_game_mute",  ps_mute="ps_game_mute",  st_mk="st_game",  ps_mk="ps_game"),
-    "music": dict(label="MUSIC", st_vol="st_music_vol", ps_vol="ps_music_vol", st_mute="st_music_mute", ps_mute="ps_music_mute", st_mk="st_music", ps_mk="ps_music"),
-    "sys":   dict(label="SYSTEM",   st_vol="st_sys_vol",   ps_vol="ps_sys_vol",   st_mute="st_sys_mute",   ps_mute="ps_sys_mute",   st_mk="st_sys",   ps_mk="ps_sys"),
-    "sfx":   dict(label="SFX",   st_vol="st_sfx_vol",   ps_vol="ps_sfx_vol",   st_mute=None,            ps_mute=None,            st_mk="ps_sfx",   ps_mk="ps_sfx"),
+    "mic": dict(
+        label="MIC",
+        st_vol="st_mic_vol",
+        ps_vol="ps_mic_vol",
+        st_mute="st_mic_mute",
+        ps_mute="ps_mic_mute",
+        st_mk="st_mic",
+        ps_mk="ps_mic",
+    ),
+    "aux": dict(
+        label="AUX",
+        st_vol="st_aux_vol",
+        ps_vol="ps_aux_vol",
+        st_mute="st_aux_mute",
+        ps_mute="ps_aux_mute",
+        st_mk="st_aux",
+        ps_mk="ps_aux",
+    ),
+    "chat": dict(
+        label="CHAT",
+        st_vol="st_chat_vol",
+        ps_vol="ps_chat_vol",
+        st_mute="st_chat_mute",
+        ps_mute="ps_chat_mute",
+        st_mk="st_chat",
+        ps_mk="ps_chat",
+    ),
+    "game": dict(
+        label="GAME",
+        st_vol="st_game_vol",
+        ps_vol="ps_game_vol",
+        st_mute="st_game_mute",
+        ps_mute="ps_game_mute",
+        st_mk="st_game",
+        ps_mk="ps_game",
+    ),
+    "music": dict(
+        label="MUSIC",
+        st_vol="st_music_vol",
+        ps_vol="ps_music_vol",
+        st_mute="st_music_mute",
+        ps_mute="ps_music_mute",
+        st_mk="st_music",
+        ps_mk="ps_music",
+    ),
+    "sys": dict(
+        label="SYSTEM",
+        st_vol="st_sys_vol",
+        ps_vol="ps_sys_vol",
+        st_mute="st_sys_mute",
+        ps_mute="ps_sys_mute",
+        st_mk="st_sys",
+        ps_mk="ps_sys",
+    ),
+    "sfx": dict(
+        label="SFX",
+        st_vol="st_sfx_vol",
+        ps_vol="ps_sfx_vol",
+        st_mute=None,
+        ps_mute=None,
+        st_mk="ps_sfx",
+        ps_mk="ps_sfx",
+    ),
 }
 
 
@@ -137,7 +194,7 @@ class _OutputStrip(QWidget):
         vol_param: str | None,
         read_only: bool,
         meter_key: str | None,
-        bridge: "BridgeCast",
+        bridge: BridgeCast,
         parent: QWidget | None = None,
     ) -> None:
         super().__init__(parent)
@@ -257,12 +314,12 @@ class HomePage(QWidget):
     # (label, mute_param, vol_param, read_only, meter_key)
     _OUTPUTS = [
         ("Sub-Mix", "mute_submix_out", "submix_vol", False, "out_submix"),
-        ("Stream",  "mute_stream_out", "stream_vol",  True, "out_stream"),
-        ("Line Out","mute_line_out",   "line_out",    True, "out_line"),
-        ("Phones",  "mute_phones_out", "phones_vol",  True, "out_phones"),
+        ("Stream", "mute_stream_out", "stream_vol", True, "out_stream"),
+        ("Line Out", "mute_line_out", "line_out", True, "out_line"),
+        ("Phones", "mute_phones_out", "phones_vol", True, "out_phones"),
     ]
 
-    def __init__(self, bridge: "BridgeCast", parent: QWidget | None = None) -> None:
+    def __init__(self, bridge: BridgeCast, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self._bridge = bridge
         # Current logical channel assigned to each physical strip (index 0–3).
@@ -307,7 +364,7 @@ class HomePage(QWidget):
 
     # ── Section builders ──────────────────────────────────────────────────────
 
-    def _inputs_block(self, bridge: "BridgeCast") -> QFrame:
+    def _inputs_block(self, bridge: BridgeCast) -> QFrame:
         card = QFrame()
         card.setObjectName("HomeLowerBlock")
         lay = QVBoxLayout(card)
@@ -332,8 +389,11 @@ class HomePage(QWidget):
             btn.setCursor(Qt.CursorShape.PointingHandCursor)
             btn.setFixedWidth(96)
             self._mode_group.addButton(btn, mode_id)
-        (self._mode_stream if self._bridge.get_parameter("mix_mode") == 1
-         else self._mode_personal).setChecked(True)
+        (
+            self._mode_stream
+            if self._bridge.get_parameter("mix_mode") == 1
+            else self._mode_personal
+        ).setChecked(True)
         self._mode_group.idToggled.connect(self._on_mix_mode_selected)
         header.addWidget(self._mode_personal)
         header.addWidget(self._mode_stream)
@@ -363,23 +423,29 @@ class HomePage(QWidget):
         for i, ch_key in enumerate(self._hw_channels):
             p = _CHANNEL_PARAMS[ch_key]
             strip = MicInputStrip(
-                ch_key, p["label"], CHANNEL_COLORS[ch_key], bridge,
-                p["st_vol"], p["ps_vol"], p["st_mute"], p["ps_mute"],
-                p["st_mk"], p["ps_mk"],
-                ALL_CHANNELS, i,
+                ch_key,
+                p["label"],
+                CHANNEL_COLORS[ch_key],
+                bridge,
+                p["st_vol"],
+                p["ps_vol"],
+                p["st_mute"],
+                p["ps_mute"],
+                p["st_mk"],
+                p["ps_mk"],
+                ALL_CHANNELS,
+                i,
             )
             strip.channel_assignment_requested.connect(
                 lambda ch, idx=i: self._on_hw_channel_changed(idx, ch)
             )
-            strip.color_changed.connect(
-                lambda css, idx=i: self._on_hw_strip_color(idx, css)
-            )
+            strip.color_changed.connect(lambda css, idx=i: self._on_hw_strip_color(idx, css))
             self._hw_strip_widgets.append(strip)
             row.addWidget(strip)
         lay.addLayout(row)
         return card
 
-    def _more_inputs_block(self, bridge: "BridgeCast") -> QFrame:
+    def _more_inputs_block(self, bridge: BridgeCast) -> QFrame:
         card = QFrame()
         card.setObjectName("HomeLowerBlock")
         lay = QVBoxLayout(card)
@@ -411,15 +477,22 @@ class HomePage(QWidget):
         for ch_key in virtual:
             p = _CHANNEL_PARAMS[ch_key]
             w = self._virtual_strip(
-                ch_key, p["label"], CHANNEL_COLORS[ch_key], self._bridge,
-                p["st_vol"], p["ps_vol"], p["st_mute"], p["ps_mute"],
-                p["st_mk"], p["ps_mk"],
+                ch_key,
+                p["label"],
+                CHANNEL_COLORS[ch_key],
+                self._bridge,
+                p["st_vol"],
+                p["ps_vol"],
+                p["st_mute"],
+                p["ps_mute"],
+                p["st_mk"],
+                p["ps_mk"],
             )
             self._more_inputs_row.addWidget(w, stretch=1)
             self._virtual_strip_widgets.append(w)
         self._reassign_virtual_colors()
 
-    def _output_block(self, bridge: "BridgeCast") -> QFrame:
+    def _output_block(self, bridge: BridgeCast) -> QFrame:
         card = QFrame()
         card.setObjectName("HomeLowerBlock")
         lay = QVBoxLayout(card)
@@ -439,16 +512,29 @@ class HomePage(QWidget):
 
     def _virtual_strip(
         self,
-        ch_key: str, label: str, color: str,
-        bridge: "BridgeCast",
-        st_v: str, ps_v: str,
-        st_m: str | None, ps_m: str | None,
-        st_mk: str, ps_mk: str,
+        ch_key: str,
+        label: str,
+        color: str,
+        bridge: BridgeCast,
+        st_v: str,
+        ps_v: str,
+        st_m: str | None,
+        ps_m: str | None,
+        st_mk: str,
+        ps_mk: str,
     ) -> InputStrip:
         """Virtual channel strip — InputStrip without the LED column (strip_index=None)."""
         return InputStrip(
-            ch_key, label, color, bridge,
-            st_v, ps_v, st_m, ps_m, st_mk, ps_mk,
+            ch_key,
+            label,
+            color,
+            bridge,
+            st_v,
+            ps_v,
+            st_m,
+            ps_m,
+            st_mk,
+            ps_mk,
             ALL_CHANNELS,
         )
 
@@ -467,18 +553,30 @@ class HomePage(QWidget):
                 self._hw_channels[other_idx] = old_ch
                 p = _CHANNEL_PARAMS[old_ch]
                 self._hw_strip_widgets[other_idx].rebind(
-                    old_ch, p["label"], CHANNEL_COLORS[old_ch],
-                    p["st_vol"], p["ps_vol"], p["st_mute"], p["ps_mute"],
-                    p["st_mk"], p["ps_mk"],
+                    old_ch,
+                    p["label"],
+                    CHANNEL_COLORS[old_ch],
+                    p["st_vol"],
+                    p["ps_vol"],
+                    p["st_mute"],
+                    p["ps_mute"],
+                    p["st_mk"],
+                    p["ps_mk"],
                 )
                 break
 
         self._hw_channels[hw_index] = new_ch
         p = _CHANNEL_PARAMS[new_ch]
         self._hw_strip_widgets[hw_index].rebind(
-            new_ch, p["label"], CHANNEL_COLORS[new_ch],
-            p["st_vol"], p["ps_vol"], p["st_mute"], p["ps_mute"],
-            p["st_mk"], p["ps_mk"],
+            new_ch,
+            p["label"],
+            CHANNEL_COLORS[new_ch],
+            p["st_vol"],
+            p["ps_vol"],
+            p["st_mute"],
+            p["ps_mute"],
+            p["st_mk"],
+            p["ps_mk"],
         )
         self._rebuild_virtual_strips()
 
@@ -497,18 +595,30 @@ class HomePage(QWidget):
                 self._hw_channels[other_idx] = old_ch
                 p = _CHANNEL_PARAMS[old_ch]
                 self._hw_strip_widgets[other_idx].rebind(
-                    old_ch, p["label"], CHANNEL_COLORS[old_ch],
-                    p["st_vol"], p["ps_vol"], p["st_mute"], p["ps_mute"],
-                    p["st_mk"], p["ps_mk"],
+                    old_ch,
+                    p["label"],
+                    CHANNEL_COLORS[old_ch],
+                    p["st_vol"],
+                    p["ps_vol"],
+                    p["st_mute"],
+                    p["ps_mute"],
+                    p["st_mk"],
+                    p["ps_mk"],
                 )
                 break
 
         self._hw_channels[strip_index] = ch_key
         p = _CHANNEL_PARAMS[ch_key]
         self._hw_strip_widgets[strip_index].rebind(
-            ch_key, p["label"], CHANNEL_COLORS[ch_key],
-            p["st_vol"], p["ps_vol"], p["st_mute"], p["ps_mute"],
-            p["st_mk"], p["ps_mk"],
+            ch_key,
+            p["label"],
+            CHANNEL_COLORS[ch_key],
+            p["st_vol"],
+            p["ps_vol"],
+            p["st_mute"],
+            p["ps_mute"],
+            p["st_mk"],
+            p["ps_mk"],
         )
         self._rebuild_virtual_strips()
 
@@ -523,7 +633,7 @@ class HomePage(QWidget):
         """Pick pool colors for virtual strips that don't clash with HW strip colors."""
         hw = [c for c in self._hw_strip_colors if c]
         colors = _pick_virtual_colors(hw, len(self._virtual_strip_widgets))
-        for widget, color in zip(self._virtual_strip_widgets, colors):
+        for widget, color in zip(self._virtual_strip_widgets, colors, strict=False):
             widget.set_color(color)
 
     # ── Signal handlers ───────────────────────────────────────────────────────

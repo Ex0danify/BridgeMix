@@ -4,6 +4,7 @@ Schema-less key/value storage; plugins own their own shape. Persistence never
 raises (a missing or bad file reads as empty). Use it from the GUI thread; from a
 worker thread, go through DeviceFacade.call.
 """
+
 from __future__ import annotations
 
 import json

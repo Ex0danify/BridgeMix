@@ -5,6 +5,7 @@ fixed-size boxes, then drives ``setGeometry`` over a fixed-width rect and reads
 back where every child landed. Fixed-size widgets give deterministic size hints
 (and no height-for-width), so the placement maths are exact.
 """
+
 from __future__ import annotations
 
 from PyQt6.QtCore import QRect, QSize
@@ -13,7 +14,7 @@ from PyQt6.QtWidgets import QWidget
 from bridgemix.gui.widgets.flow_layout import FlowLayout
 
 _SPACING = 10
-_WIDTH = 100          # usable width of the layout rect (margins are zero)
+_WIDTH = 100  # usable width of the layout rect (margins are zero)
 _BOX = QSize(40, 20)  # every box reports the same hint so wrapping is predictable
 
 
@@ -106,9 +107,9 @@ def test_mixed_full_width_breaks_the_row(qapp):
     # The full-width item forces a new row even though the compact one before it
     # left room, and the trailing compact item starts a fresh row below it.
     assert _rects([compact_a, full, compact_b]) == [
-        (0, 0, 40, 20),     # compact, top-left
-        (0, 30, 100, 20),   # full-width, own row, spans width
-        (0, 60, 40, 20),    # compact, below the full-width item
+        (0, 0, 40, 20),  # compact, top-left
+        (0, 30, 100, 20),  # full-width, own row, spans width
+        (0, 60, 40, 20),  # compact, below the full-width item
     ]
 
 

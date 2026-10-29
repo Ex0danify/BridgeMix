@@ -24,6 +24,7 @@ The contract:
 not required. `from bridgemix.plugins import style` gives matching design tokens,
 role helpers, and the signature controls (ToggleSwitch, meters, …).
 """
+
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
@@ -54,8 +55,8 @@ class PluginContext:
     plugin_dir   folder the plugin was loaded from, for bundled assets
     """
 
-    device: "DeviceFacade"
-    settings: "SettingsStore"
+    device: DeviceFacade
+    settings: SettingsStore
     log: Logger
     host_version: str
     plugin_dir: Path | None = None
@@ -65,10 +66,10 @@ class Plugin(ABC):
     """Base class for plugins. Keep __init__ cheap; do the work in create_widget."""
 
     @abstractmethod
-    def create_widget(self, ctx: "PluginContext") -> "QWidget":
+    def create_widget(self, ctx: PluginContext) -> QWidget:
         """Build and return the widget for the Plugins panel (once, on the GUI thread)."""
 
-    def shutdown(self) -> None:
+    def shutdown(self) -> None:  # noqa: B027  (optional hook, intentionally a no-op)
         """Stop threads/servers on quit or disable. Optional; safe to call anytime."""
 
 
