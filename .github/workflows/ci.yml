@@ -61,6 +61,10 @@ jobs:
   windows-build:
     uses: ./.github/workflows/build-windows.yml
 
+  # Freezes and smoke-tests the app on macOS and builds the dmg. It cannot be tried by hand without a Mac, so it is checked here.
+  macos-build:
+    uses: ./.github/workflows/build-macos.yml
+
   # Builds the Flatpak and runs the app once inside its sandbox, so a packaging break shows up at PR time rather than at release.
   flatpak-build:
     uses: ./.github/workflows/build-flatpak.yml
@@ -68,7 +72,7 @@ jobs:
   # The one status to require in the branch protection.
   ci-pass:
     if: always()
-    needs: [lint, test, windows-build, flatpak-build]
+    needs: [lint, test, windows-build, macos-build, flatpak-build]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
