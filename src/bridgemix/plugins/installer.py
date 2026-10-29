@@ -49,6 +49,9 @@ def _externally_managed() -> bool:
 
 def can_install() -> bool:
     """Whether an in-app ``pip install`` is likely to succeed and persist."""
+    # A packaged build's sys.executable is the app itself, so it can't run pip.
+    if getattr(sys, "frozen", False):
+        return False
     return not _in_flatpak() and not _externally_managed()
 
 

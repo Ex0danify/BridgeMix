@@ -1,0 +1,49 @@
+name: Build macOS arm64
+
+# Freezes the app with PyInstaller into BridgeMix.app, smoke-tests it and wraps it in a .dmg. The app is ad-hoc signed
+# only (no Apple Developer certificate), so macOS asks for a right-click > Open the first time. Used by the release workflow.
+on:
+  workflow_call:
+    inputs:
+      upload:
+        description: Upload the dmg as a build artifact
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  macos-arm64:
+    runs-on: macos-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install the build dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[build]"
+      - name: Build with PyInstaller
+        run: pyinstaller --noconfirm packaging/bridgemix.spec
+      - name: Smoke-test the packaged app
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: dist/BridgeMix.app/Contents/MacOS/BridgeMix --smoke-test
+      - name: Package
+        run: |
+          version="$(python -c 'from bridgemix import __version__; print(__version__)')"
+          mkdir -p out dmg
+          cp -R dist/BridgeMix.app dmg/
+          ln -s /Applications dmg/Applications
+          hdiutil create -volname "BridgeMix $version" -srcfolder dmg -ov -format UDZO "out/BridgeMix-$version-macos-arm64.dmg"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: ${{ inputs.upload }}
+        with:
+          name: macos-arm64
+          path: out/*
+          if-no-files-found: error

@@ -22,7 +22,7 @@
 
 "area: installer":
   - changed-files:
-      - any-glob-to-any-file: ["setup.sh", "setup.bat", "pyproject.toml"]
+      - any-glob-to-any-file: ["setup.sh", "setup.bat", "pyproject.toml", "packaging/**"]
 
 "area: ci":
   - changed-files:

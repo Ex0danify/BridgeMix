@@ -54,6 +54,20 @@ Match the surrounding code's conventions. The codebase favours small, focused
 modules and keeps all SysEx frame construction behind `midi/sysex.py` — please
 don't hand-roll byte arrays elsewhere.
 
+## Packaged builds
+
+Windows (installer plus a portable zip) and macOS (`.dmg`) builds are frozen with PyInstaller from
+[`packaging/bridgemix.spec`](packaging/bridgemix.spec) and attached to each release by
+`.github/workflows/release.yml`. To try one locally:
+
+```bash
+pip install -e ".[build]"
+pyinstaller --noconfirm packaging/bridgemix.spec
+dist/BridgeMix/BridgeMix --smoke-test
+```
+
+Frozen builds can't self-update from git or install plugin dependencies with pip.
+
 ## Submitting changes
 
 1. Branch off `master`.

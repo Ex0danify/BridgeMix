@@ -57,10 +57,18 @@ jobs:
             python -m coverage report --format=markdown
           } >> "$GITHUB_STEP_SUMMARY"
 
+  # Freezes and smoke-tests the app, then builds the installer, so a packaging break shows up at PR time rather than at release.
+  windows-build:
+    uses: ./.github/workflows/build-windows.yml
+
+  # TEMPORARY: exercise the macOS build on this PR; removed before merge.
+  macos-build:
+    uses: ./.github/workflows/build-macos.yml
+
   # The one status to require in the branch protection.
   ci-pass:
     if: always()
-    needs: [lint, test]
+    needs: [lint, test, windows-build]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
