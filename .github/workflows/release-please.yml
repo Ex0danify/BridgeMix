@@ -1,6 +1,6 @@
 name: Release PR
 
-# Keeps one open pull request on master that bumps __version__ in src/bridgemix/__init__.py and updates CHANGELOG.md. Merging
+# Keeps one open pull request on master that bumps __version__ in src/bridgemix/__init__.py. Merging
 # it creates the v* tag and the GitHub release with the notes sorted by commit type. The in-app update check
 # (src/bridgemix/updates.py) and the self-updater read that release and tag, so they stay in step with the version.
 # It runs with CI_PUSH_TOKEN: tags and pull requests made by GITHUB_TOKEN start no workflows, so the checks would never run.
