@@ -1,0 +1,27 @@
+name: Release PR
+
+# Keeps one open pull request on master that bumps __version__ in src/bridgemix/__init__.py and updates CHANGELOG.md. Merging
+# it creates the v* tag and the GitHub release with the notes sorted by commit type. The in-app update check
+# (src/bridgemix/updates.py) and the self-updater read that release and tag, so they stay in step with the version.
+# It runs with CI_PUSH_TOKEN: tags and pull requests made by GITHUB_TOKEN start no workflows, so the checks would never run.
+on:
+  push:
+    branches: [main, master]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: step-security/harden-runner@dc2769abcc0fcfbadfc1df54081c1608579ef6b2 # v2.22.2
+        with:
+          egress-policy: audit
+      - uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
+        with:
+          token: ${{ secrets.CI_PUSH_TOKEN }}
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json

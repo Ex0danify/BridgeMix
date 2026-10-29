@@ -5,6 +5,9 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    # Conventional Commit titles, so the PR title check and release-please accept them.
+    commit-message:
+      prefix: "ci"
     groups:
       actions:
         patterns: ["*"]
@@ -14,6 +17,8 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    commit-message:
+      prefix: "build"
     groups:
       python:
         patterns: ["*"]

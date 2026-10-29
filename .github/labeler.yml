@@ -1,0 +1,39 @@
+# Area labels applied to a pull request from the files it changes.
+
+"area: gui":
+  - changed-files:
+      - any-glob-to-any-file: ["src/bridgemix/gui/**", "src/bridgemix/theme.py", "assets/**"]
+
+"area: device":
+  - changed-files:
+      - any-glob-to-any-file: ["src/bridgemix/device/**", "src/bridgemix/midi/**", "src/bridgemix/audio/**"]
+
+"area: routing":
+  - changed-files:
+      - any-glob-to-any-file: ["src/bridgemix/routing/**"]
+
+"area: plugins":
+  - changed-files:
+      - any-glob-to-any-file: ["src/bridgemix/plugins/**"]
+
+"area: updater":
+  - changed-files:
+      - any-glob-to-any-file: ["src/bridgemix/updates.py", "src/bridgemix/selfupdate.py"]
+
+"area: installer":
+  - changed-files:
+      - any-glob-to-any-file: ["setup.sh", "setup.bat", "pyproject.toml"]
+
+"area: ci":
+  - changed-files:
+      - any-glob-to-any-file: [".github/**", "sonar-project.properties", "release-please-config.json", ".release-please-manifest.json"]
+
+"type: documentation":
+  - changed-files:
+      - any-glob-to-any-file: ["**/*.md", "doc/**"]
+
+# The dedicated test trees. Tests colocated with a plugin (plugins/builtins/*/tests) are left out, so this marks a
+# pull request that is about tests rather than any one that happens to touch a test.
+"type: test":
+  - changed-files:
+      - any-glob-to-any-file: ["tests/**", "conftest.py"]
