@@ -34,8 +34,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # Versions with prebuilt python-rtmidi / PyQt6 wheels (see setup.sh).
-        python-version: ["3.11", "3.12"]
+        # python-rtmidi has no wheel for 3.13, so pip builds it from source (libasound2-dev, see the setup action).
+        python-version: ["3.11", "3.12", "3.13"]
     steps:
       - uses: step-security/harden-runner@dc2769abcc0fcfbadfc1df54081c1608579ef6b2 # v2.22.2
         with:
