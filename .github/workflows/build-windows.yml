@@ -35,10 +35,16 @@ jobs:
         run: pyinstaller --noconfirm packaging/bridgemix.spec
       - name: Smoke-test the packaged app
         shell: pwsh
+        env:
+          QT_QPA_PLATFORM: offscreen # no desktop session on the runner
         run: |
           $ErrorActionPreference = "Stop"
           $report = Join-Path $env:RUNNER_TEMP "smoke.txt"
-          $p = Start-Process -FilePath dist/BridgeMix/BridgeMix.exe -ArgumentList "--smoke-test", "--smoke-report", $report -Wait -PassThru
+          $p = Start-Process -FilePath dist/BridgeMix/BridgeMix.exe -ArgumentList "--smoke-test", "--smoke-report", $report -PassThru
+          if (-not $p.WaitForExit(120000)) {
+            $p.Kill()
+            throw "Smoke test did not finish within 2 minutes"
+          }
           if (Test-Path $report) { Get-Content $report }
           if ($p.ExitCode -ne 0) { throw "Smoke test failed with exit code $($p.ExitCode)" }
           if (-not (Test-Path $report)) { throw "Smoke test wrote no report" }
