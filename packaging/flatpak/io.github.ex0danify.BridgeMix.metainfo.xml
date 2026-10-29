@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>io.github.ex0danify.BridgeMix</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>GPL-3.0-or-later</project_license>
+  <name>BridgeMix</name>
+  <summary>Unofficial controller for the Roland BRIDGE CAST mixer</summary>
+  <developer id="io.github.ex0danify">
+    <name>Ex0danify</name>
+  </developer>
+  <description>
+    <p>
+      BridgeMix is an open-source controller for the Roland BRIDGE CAST USB audio mixer. Roland's own app has
+      no Linux version, so BridgeMix talks to the device over MIDI directly.
+    </p>
+    <p>
+      Control the mixes, microphone effects, voice changer, game effects, output routing and profiles, with live level
+      metering. A plugin system and an optional local REST API let other tools such as OBS or a Stream Deck drive the mixer.
+    </p>
+    <p>This is an unofficial project and is not affiliated with Roland.</p>
+  </description>
+  <launchable type="desktop-id">io.github.ex0danify.BridgeMix.desktop</launchable>
+  <url type="homepage">https://github.com/Ex0danify/BridgeMix</url>
+  <url type="bugtracker">https://github.com/Ex0danify/BridgeMix/issues</url>
+  <screenshots>
+    <screenshot type="default">
+      <image>https://raw.githubusercontent.com/Ex0danify/BridgeMix/master/doc/screenshots/screenshot_mixer.png</image>
+      <caption>The mixer</caption>
+    </screenshot>
+    <screenshot>
+      <image>https://raw.githubusercontent.com/Ex0danify/BridgeMix/master/doc/screenshots/screenshot_mic_fx.png</image>
+      <caption>Microphone effects</caption>
+    </screenshot>
+    <screenshot>
+      <image>https://raw.githubusercontent.com/Ex0danify/BridgeMix/master/doc/screenshots/screenshot_output.png</image>
+      <caption>Output routing</caption>
+    </screenshot>
+  </screenshots>
+  <categories>
+    <category>AudioVideo</category>
+    <category>Audio</category>
+    <category>Mixer</category>
+  </categories>
+  <content_rating type="oars-1.1"/>
+  <supports>
+    <control>pointing</control>
+    <control>keyboard</control>
+  </supports>
+  <provides>
+    <binary>bridgemix</binary>
+  </provides>
+  <releases>
+    <release version="1.2.2" date="2026-07-14"/> <!-- x-release-please-version -->
+  </releases>
+</component>

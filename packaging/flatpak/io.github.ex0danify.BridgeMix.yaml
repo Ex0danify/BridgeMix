@@ -1,0 +1,62 @@
+# Flatpak manifest. Build and install locally:
+#   flatpak-builder --user --install --force-clean build-dir packaging/flatpak/io.github.ex0danify.BridgeMix.yaml
+# PyQt6 comes from the PyQt base app; the other Python dependencies are in python-deps.json (see packaging/flatpak/README.md
+# for how to regenerate it).
+app-id: io.github.ex0danify.BridgeMix
+runtime: org.kde.Platform
+runtime-version: "6.11"
+sdk: org.kde.Sdk
+base: com.riverbankcomputing.PyQt.BaseApp
+base-version: "6.11"
+command: bridgemix
+cleanup-commands:
+  - /app/cleanup-BaseApp.sh
+
+finish-args:
+  - --share=ipc
+  - --socket=wayland
+  - --socket=fallback-x11
+  - --device=dri
+  # Hear and route audio: the routing page drives PulseAudio/PipeWire through pactl.
+  - --socket=pulseaudio
+  # The Bridge Cast is a MIDI device: python-rtmidi opens the ALSA sequencer and raw MIDI nodes under /dev/snd.
+  - --device=all
+  # The optional REST API plugin and the update check.
+  - --share=network
+  # The tray icon.
+  - --talk-name=org.kde.StatusNotifierWatcher
+
+modules:
+  - name: portaudio
+    config-opts:
+      - --disable-static
+      - --without-jack
+    cleanup:
+      - /include
+      - /lib/pkgconfig
+      - /lib/*.la
+    sources:
+      - type: archive
+        url: http://files.portaudio.com/archives/pa_stable_v190700_20210406.tgz
+        sha256: 47efbf42c77c19a05d22e627d42873e991ec0c1357219c0d74ce6a2948cb2def
+
+  - python-deps.json
+
+  - name: bridgemix
+    buildsystem: simple
+    build-commands:
+      - pip3 install --verbose --exists-action=i --no-index --no-deps --no-build-isolation --prefix=${FLATPAK_DEST} .
+      - install -Dm644 assets/icon.svg ${FLATPAK_DEST}/share/icons/hicolor/scalable/apps/io.github.ex0danify.BridgeMix.svg
+      - sed 's|^Exec=.*|Exec=bridgemix|' assets/io.github.ex0danify.BridgeMix.desktop > io.github.ex0danify.BridgeMix.desktop
+      - install -Dm644 io.github.ex0danify.BridgeMix.desktop ${FLATPAK_DEST}/share/applications/io.github.ex0danify.BridgeMix.desktop
+      - install -Dm644 packaging/flatpak/io.github.ex0danify.BridgeMix.metainfo.xml ${FLATPAK_DEST}/share/metainfo/io.github.ex0danify.BridgeMix.metainfo.xml
+    sources:
+      - type: dir
+        path: ../..
+        skip:
+          - .git
+          - .venv
+          - .flatpak-builder
+          - build-dir
+          - dist
+          - node_modules

@@ -10,6 +10,10 @@
         {
           "type": "generic",
           "path": "src/bridgemix/__init__.py"
+        },
+        {
+          "type": "generic",
+          "path": "packaging/flatpak/io.github.ex0danify.BridgeMix.metainfo.xml"
         }
       ],
       "changelog-sections": [

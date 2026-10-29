@@ -61,10 +61,14 @@ jobs:
   windows-build:
     uses: ./.github/workflows/build-windows.yml
 
+  # Builds the Flatpak and runs the app once inside its sandbox, so a packaging break shows up at PR time rather than at release.
+  flatpak-build:
+    uses: ./.github/workflows/build-flatpak.yml
+
   # The one status to require in the branch protection.
   ci-pass:
     if: always()
-    needs: [lint, test, windows-build]
+    needs: [lint, test, windows-build, flatpak-build]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:

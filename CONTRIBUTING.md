@@ -66,6 +66,8 @@ pyinstaller --noconfirm packaging/bridgemix.spec
 dist/BridgeMix/BridgeMix --smoke-test
 ```
 
+The Flatpak is built from [`packaging/flatpak`](packaging/flatpak/README.md).
+
 Frozen builds can't self-update from git or install plugin dependencies with pip.
 
 ## Submitting changes
