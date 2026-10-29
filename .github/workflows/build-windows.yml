@@ -1,0 +1,86 @@
+name: Build Windows x64
+
+# Freezes the app with PyInstaller, smoke-tests the result and wraps it in an Inno Setup installer. Shared by the release
+# workflow (upload: true) and the PR gate in ci.yml (upload: false). It builds whatever __version__ the checkout has.
+on:
+  workflow_call:
+    inputs:
+      upload:
+        description: Upload the installer and the portable zip as a build artifact
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  windows-x64:
+    runs-on: windows-latest
+    # harden-runner is Linux-only, so the Windows job runs without egress control.
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install the build dependencies
+        shell: pwsh
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[build]"
+      - name: Build with PyInstaller
+        shell: pwsh
+        run: pyinstaller --noconfirm packaging/bridgemix.spec
+      - name: Smoke-test the packaged app
+        shell: pwsh
+        env:
+          QT_QPA_PLATFORM: offscreen # no desktop session on the runner
+        run: |
+          $ErrorActionPreference = "Stop"
+          $report = Join-Path $env:RUNNER_TEMP "smoke.txt"
+          $p = Start-Process -FilePath dist/BridgeMix/BridgeMix.exe -ArgumentList "--smoke-test", "--smoke-report", $report -PassThru
+          if (-not $p.WaitForExit(120000)) {
+            $p.Kill()
+            throw "Smoke test did not finish within 2 minutes"
+          }
+          if (Test-Path $report) { Get-Content $report }
+          if ($p.ExitCode -ne 0) { throw "Smoke test failed with exit code $($p.ExitCode)" }
+          if (-not (Test-Path $report)) { throw "Smoke test wrote no report" }
+      - name: Package
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $version = python -c "from bridgemix import __version__; print(__version__)"
+          "VERSION=$version" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          New-Item -ItemType Directory -Path out | Out-Null
+          iscc "/DAppVersion=$version" "/DSourceDir=$PWD\dist\BridgeMix" "/DOutputDir=$PWD\out" packaging/windows/bridgemix.iss
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Compress-Archive -Path dist/BridgeMix -DestinationPath "out/BridgeMix-$version-windows-x64-portable.zip"
+      # The installer installs once; the app then runs from the install folder, not from the build output.
+      - name: Install and smoke-test the installed app
+        shell: pwsh
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: |
+          $ErrorActionPreference = "Stop"
+          $dir = Join-Path $env:RUNNER_TEMP "bridgemix-install"
+          $installer = Get-ChildItem out/*-setup.exe | Select-Object -First 1
+          Start-Process -FilePath $installer.FullName -ArgumentList "/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART", "/DIR=$dir" -Wait
+          if (-not (Test-Path "$dir/BridgeMix.exe")) { throw "The installer did not install BridgeMix.exe" }
+          $report = Join-Path $env:RUNNER_TEMP "smoke-installed.txt"
+          $p = Start-Process -FilePath "$dir/BridgeMix.exe" -ArgumentList "--smoke-test", "--smoke-report", $report -PassThru
+          if (-not $p.WaitForExit(120000)) {
+            $p.Kill()
+            throw "Smoke test of the installed app did not finish within 2 minutes"
+          }
+          if (Test-Path $report) { Get-Content $report }
+          if ($p.ExitCode -ne 0) { throw "Smoke test of the installed app failed with exit code $($p.ExitCode)" }
+          if (-not (Test-Path $report)) { throw "Smoke test of the installed app wrote no report" }
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: ${{ inputs.upload }}
+        with:
+          name: windows-x64
+          path: out/*
+          if-no-files-found: error

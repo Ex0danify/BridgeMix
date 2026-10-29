@@ -22,6 +22,7 @@ MANIFEST
 # PyInstaller
 *.manifest
 *.spec
+!packaging/bridgemix.spec
 
 # Installer logs
 pip-log.txt

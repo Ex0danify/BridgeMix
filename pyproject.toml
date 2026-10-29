@@ -31,6 +31,9 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = ["pytest>=7", "pytest-cov", "ruff"]
+# For the packaged Windows/macOS builds (packaging/bridgemix.spec). The REST API
+# built-in plugin's own requirements (see its plugin.toml) are frozen in as well.
+build = ["pyinstaller>=6.10", "pillow", "fastapi>=0.110", "uvicorn>=0.27"]
 
 [tool.setuptools.dynamic]
 version = {attr = "bridgemix.__version__"}

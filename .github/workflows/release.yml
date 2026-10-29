@@ -1,0 +1,70 @@
+name: Release assets
+
+# Release-please creates the v* tag and the GitHub release with the notes; this builds the Windows and macOS packages for that
+# tag and attaches them to it, with checksums and a build provenance attestation. Run it by hand to just build them (the packages
+# are kept as run artifacts and nothing is published). The tag starts it because release-please runs with CI_PUSH_TOKEN.
+on:
+  push:
+    tags:
+      - "v*.*.*"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  windows-x64:
+    uses: ./.github/workflows/build-windows.yml
+    with:
+      upload: true
+
+  macos-arm64:
+    uses: ./.github/workflows/build-macos.yml
+    with:
+      upload: true
+
+  publish-release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [windows-x64, macos-arm64]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+      id-token: write # mint the provenance attestation
+      attestations: write
+    steps:
+      - uses: step-security/harden-runner@dc2769abcc0fcfbadfc1df54081c1608579ef6b2 # v2.22.2
+        with:
+          egress-policy: audit
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      # The packages are built from the tagged commit, so its __version__ has to be the tag's version.
+      - name: Check the tag matches the version
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          version="$(sed -n 's/^__version__ = "\(.*\)".*/\1/p' src/bridgemix/__init__.py)"
+          if [ "v$version" != "$TAG" ]; then echo "::error::Tag $TAG does not match __version__ $version"; exit 1; fi
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: '*-x64'
+          path: release-assets
+          merge-multiple: true
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: '*-arm64'
+          path: release-assets
+          merge-multiple: true
+      - name: Checksums
+        run: |
+          set -euo pipefail
+          cd release-assets
+          ls -l
+          sha256sum BridgeMix-* > SHA256SUMS
+      - uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: release-assets/BridgeMix-*
+      - name: Attach to the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: gh release upload "$TAG" release-assets/* --clobber --repo "$GITHUB_REPOSITORY"

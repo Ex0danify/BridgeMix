@@ -46,6 +46,8 @@ def repo_root() -> Path | None:
 
 def can_self_update() -> bool:
     """Whether an in-place git update is possible: a checkout *and* git on PATH."""
+    if getattr(sys, "frozen", False):  # packaged build: nothing to check out
+        return False
     return repo_root() is not None and shutil.which("git") is not None
 
 
