@@ -1,4 +1,5 @@
 """Tests for the plugin styling kit (``bridgemix.plugins.style``)."""
+
 from __future__ import annotations
 
 from PyQt6.QtCore import Qt
@@ -7,8 +8,8 @@ from PyQt6.QtWidgets import QLabel, QPushButton, QSlider
 
 from bridgemix.plugins import style
 
-
 # ── Tokens ────────────────────────────────────────────────────────────────────
+
 
 def test_hex_tokens_are_strings():
     assert style.ACCENT.startswith("#")
@@ -27,6 +28,7 @@ def test_channel_colours_present_and_copied():
     # A defensive copy — mutating it must not corrupt the shared theme.
     style.CHANNEL_COLORS["mic"] = "#000000"
     from bridgemix import theme
+
     assert theme.CHANNEL_COLORS["mic"] != "#000000"
 
 
@@ -37,6 +39,7 @@ def test_qcolor_tokens():
 
 
 # ── Role helpers ──────────────────────────────────────────────────────────────
+
 
 def test_primary_button(qapp):
     btn = QPushButton("Save")
@@ -76,6 +79,7 @@ def test_muted_sets_colour(qapp):
 
 
 # ── Reusable controls ─────────────────────────────────────────────────────────
+
 
 def test_toggle_switch(qapp):
     sw = style.ToggleSwitch(checked=True)

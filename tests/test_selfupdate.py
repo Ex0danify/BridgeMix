@@ -4,6 +4,7 @@ git and pip are mocked and ``_run`` is invoked directly on the test thread (its
 ``finished`` signal fires synchronously over a direct connection), so no real
 checkout switch, network, or event loop is needed.
 """
+
 from __future__ import annotations
 
 from types import SimpleNamespace
@@ -21,6 +22,7 @@ def _fail(stderr: str) -> SimpleNamespace:
 
 
 # ── Eligibility gating ────────────────────────────────────────────────────────
+
 
 def test_repo_root_found_in_this_checkout():
     root = su.repo_root()
@@ -46,6 +48,7 @@ def test_is_clean_reflects_porcelain(monkeypatch, tmp_path):
 
 
 # ── Update flow ───────────────────────────────────────────────────────────────
+
 
 def _run_update(monkeypatch, tmp_path, *, clean=True, git=None, pip=None):
     """Drive SelfUpdater._run with mocked git/pip; return (success, message)."""

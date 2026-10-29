@@ -1,0 +1,19 @@
+version: 2
+updates:
+  # Keep the SHA-pinned actions current; grouped so a week's bumps arrive as one reviewable PR.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      actions:
+        patterns: ["*"]
+
+  # Runtime and dev dependencies from pyproject.toml, grouped the same way.
+  - package-ecosystem: pip
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      python:
+        patterns: ["*"]

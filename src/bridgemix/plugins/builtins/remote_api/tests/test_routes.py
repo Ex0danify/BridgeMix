@@ -5,6 +5,7 @@ uvicorn server is involved — the marshalling itself is covered in
 ``test_device_facade``.  Skipped cleanly when the optional ``api`` dependencies
 are not installed.
 """
+
 from __future__ import annotations
 
 import pytest
@@ -138,6 +139,7 @@ def test_set_missing_body_422(client):
 
 # ── Device disconnected ─────────────────────────────────────────────────────────
 
+
 @pytest.fixture
 def offline_client():
     app = create_app(FakeGateway(connected=False), host=_HOST, port=_PORT)
@@ -147,8 +149,9 @@ def offline_client():
 def test_set_while_disconnected_503():
     # Writing a perfectly valid parameter still fails — it can't reach the device.
     gateway = FakeGateway(connected=False)
-    client = TestClient(create_app(gateway, host=_HOST, port=_PORT),
-                        base_url=f"http://{_HOST}:{_PORT}")
+    client = TestClient(
+        create_app(gateway, host=_HOST, port=_PORT), base_url=f"http://{_HOST}:{_PORT}"
+    )
     r = client.put("/api/v1/parameters/st_mic_vol", json={"value": 42})
     assert r.status_code == 503
     # And nothing was written.
@@ -173,9 +176,10 @@ def test_validation_precedes_disconnect_check(offline_client):
     # A bad request is still a 4xx even when disconnected (no point reporting 503).
     assert offline_client.put("/api/v1/parameters/nope", json={"value": 1}).status_code == 404
     assert offline_client.put("/api/v1/parameters/ro_param", json={"value": 1}).status_code == 409
-    assert offline_client.put(
-        "/api/v1/parameters/st_mic_vol", json={"value": 99999}
-    ).status_code == 422
+    assert (
+        offline_client.put("/api/v1/parameters/st_mic_vol", json={"value": 99999}).status_code
+        == 422
+    )
 
 
 def test_openapi_and_swagger_served(client):
@@ -184,6 +188,7 @@ def test_openapi_and_swagger_served(client):
 
 
 # ── Origin / Host guard ───────────────────────────────────────────────────────
+
 
 def test_header_less_request_allowed(client):
     # curl / Stream Deck send no Origin and a loopback Host → allowed.

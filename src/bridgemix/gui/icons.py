@@ -1,6 +1,7 @@
 """
 Icon helpers — tiny QPixmap factories, no external image files.
 """
+
 from __future__ import annotations
 
 from PyQt6.QtCore import QRectF, Qt

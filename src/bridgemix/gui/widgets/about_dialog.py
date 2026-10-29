@@ -1,4 +1,5 @@
 """About dialog: version, trademark disclaimer, and license."""
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -14,9 +15,10 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-from bridgemix.selfupdate import SelfUpdater, can_self_update, escape as _esc
-from bridgemix.updates import UpdateChecker, UpdateInfo, current_version as _app_version
-
+from bridgemix.selfupdate import SelfUpdater, can_self_update
+from bridgemix.selfupdate import escape as _esc
+from bridgemix.updates import UpdateChecker, UpdateInfo
+from bridgemix.updates import current_version as _app_version
 
 _DISCLAIMER = (
     "BridgeMix is an independent, unofficial project. It is <b>not affiliated "
@@ -91,9 +93,7 @@ class AboutDialog(QDialog):
         # check reuses it; "Check again" forces a fresh network query.
         self._run_check()
 
-        desc = QLabel(
-            "A Linux desktop controller for the Roland BRIDGE CAST USB audio mixer."
-        )
+        desc = QLabel("A Linux desktop controller for the Roland BRIDGE CAST USB audio mixer.")
         desc.setWordWrap(True)
         desc.setStyleSheet("color:#c8c8cc;font-size:12px;")
         lay.addWidget(desc)
@@ -128,9 +128,7 @@ class AboutDialog(QDialog):
         """Kick off a version check, reflecting the in-progress state in the UI."""
         self._check_btn.setEnabled(False)
         self._update_btn.hide()
-        self._update_lbl.setText(
-            "<span style='color:#7a7a82;'>Checking for updates…</span>"
-        )
+        self._update_lbl.setText("<span style='color:#7a7a82;'>Checking for updates…</span>")
         self._checker.start(force=force)
 
     def _recheck(self) -> None:

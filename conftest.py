@@ -6,6 +6,7 @@ A single session-scoped ``QApplication`` is provided for tests that construct
 synchronous, so no running event loop is required — the fixture only needs to
 ensure a ``QApplication`` instance exists.
 """
+
 from __future__ import annotations
 
 import pytest

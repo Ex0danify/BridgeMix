@@ -1,4 +1,5 @@
 """Tests for plugin enable/consent persistence (``bridgemix.plugins.state``)."""
+
 from __future__ import annotations
 
 import pytest

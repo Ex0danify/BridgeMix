@@ -21,18 +21,24 @@ Usage::
     toggle = style.ToggleSwitch(checked=True)
     label.setStyleSheet(f"color: {style.ACCENT};")
 """
+
 from __future__ import annotations
 
 from PyQt6.QtWidgets import QWidget
 
 from bridgemix import theme
+
 # Re-exported under stable names; internals may move, these won't.
-from bridgemix.gui.widgets.controls import (  # noqa: F401
+from bridgemix.gui.widgets.controls import (
     PeakMeter,
-    ScrollGuardComboBox as ComboBox,
-    ScrollGuardSpinBox as SpinBox,
     Slider,
     ToggleSwitch,
+)
+from bridgemix.gui.widgets.controls import (
+    ScrollGuardComboBox as ComboBox,
+)
+from bridgemix.gui.widgets.controls import (
+    ScrollGuardSpinBox as SpinBox,
 )
 
 # ── Tokens (hex strings — use in setStyleSheet / f-strings) ─────────────────────
@@ -49,8 +55,8 @@ TEXT_FAINT = theme.TEXT_FAINT
 
 ACCENT = theme.ACCENT
 ACCENT_HOVER = theme.ACCENT_HOVER
-ACCENT_SOFT = theme.ACCENT_SOFT    # rgba — accent-tinted fill (selected / checked)
-ACCENT_GLOW = theme.ACCENT_GLOW    # rgba — stronger accent fill / glow
+ACCENT_SOFT = theme.ACCENT_SOFT  # rgba — accent-tinted fill (selected / checked)
+ACCENT_GLOW = theme.ACCENT_GLOW  # rgba — stronger accent fill / glow
 
 GREEN = theme.GREEN
 RED = theme.RED

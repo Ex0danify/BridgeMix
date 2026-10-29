@@ -1,4 +1,5 @@
 """Tests for the Roland export translation table (``bridgemix.preset.roland_map``)."""
+
 from __future__ import annotations
 
 import json

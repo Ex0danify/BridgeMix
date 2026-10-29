@@ -1,13 +1,15 @@
 """Tests for the parameter REGISTRY and address lookup
 (``bridgemix.device.parameters``)."""
+
 from __future__ import annotations
+
+from dataclasses import FrozenInstanceError
 
 import pytest
 
 from bridgemix.device import constants as C
 from bridgemix.device.parameters import (
     REGISTRY,
-    Parameter,
     lookup_by_address,
 )
 
@@ -59,8 +61,13 @@ def test_addresses_are_unique_per_section_type():
 
 def test_read_only_params_are_registered():
     # The hardware monitor knobs and high-bit surround angles are read-only.
-    for name in ("stream_vol", "phones_vol", "line_out",
-                 "game_vsurround_surround_angle", "game_vsurround_back_angle"):
+    for name in (
+        "stream_vol",
+        "phones_vol",
+        "line_out",
+        "game_vsurround_surround_angle",
+        "game_vsurround_back_angle",
+    ):
         assert REGISTRY[name].read_only is True
 
 
@@ -70,7 +77,7 @@ def test_writable_fader_param_is_not_read_only():
 
 def test_parameter_is_frozen_dataclass():
     p = REGISTRY["st_mic_vol"]
-    with pytest.raises(Exception):
+    with pytest.raises(FrozenInstanceError):
         p.default_value = 99  # type: ignore[misc]
 
 

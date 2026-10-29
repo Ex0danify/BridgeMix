@@ -3,6 +3,7 @@ Output panel — Output delay and Line Out / USB Out / Sub Mix routing.
 
 (Output mutes live on the mixer/home page output strips, not here.)
 """
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
@@ -26,7 +27,7 @@ def _fmt_delay(v: int) -> str:
 
 
 class OutputPanel(QWidget):
-    def __init__(self, bridge: "BridgeCast", parent: QWidget | None = None) -> None:
+    def __init__(self, bridge: BridgeCast, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self._bridge = bridge
         layout = QVBoxLayout(self)
@@ -45,9 +46,16 @@ class OutputPanel(QWidget):
         lay.setContentsMargins(10, 6, 10, 10)
         lay.setSpacing(6)
         lay.addWidget(ParamToggle("Enable", "output_delay_sw", self._bridge))
-        lay.addWidget(LabeledSlider(
-            "DELAY", "output_delay_amount", self._bridge, 0, 60, _fmt_delay,
-        ))
+        lay.addWidget(
+            LabeledSlider(
+                "DELAY",
+                "output_delay_amount",
+                self._bridge,
+                0,
+                60,
+                _fmt_delay,
+            )
+        )
         return grp
 
     # ── Output Routing ────────────────────────────────────────────────────────

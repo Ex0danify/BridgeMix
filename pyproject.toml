@@ -30,7 +30,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["pytest>=7", "ruff"]
+dev = ["pytest>=7", "pytest-cov", "ruff"]
 
 [tool.setuptools.dynamic]
 version = {attr = "bridgemix.__version__"}
@@ -58,6 +58,19 @@ bridgemix = "bridgemix.__main__:main"
 [tool.ruff]
 line-length = 100
 target-version = "py311"
+extend-exclude = ["*.md"]   # don't reformat the code samples in the docs
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+# The formatter owns line length; what is left are unsplittable Qt stylesheet strings.
+ignore = ["E501"]
+
+[tool.ruff.lint.per-file-ignores]
+# These modules deliberately import after a module-level definition.
+"src/bridgemix/gui/main_window.py" = ["E402"]
+"src/bridgemix/gui/widgets/controls.py" = ["E402"]
+# The plugin SDK re-exports these names for plugin authors.
+"src/bridgemix/plugins/style.py" = ["F401"]
 
 [tool.pytest.ini_options]
 pythonpath = ["src"]

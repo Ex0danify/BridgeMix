@@ -3,6 +3,7 @@
 A bare BridgeCast (no device) backs the DeviceFacade, qapp supplies the
 QApplication, and XDG_* point at a temp dir so nothing touches the real config.
 """
+
 from __future__ import annotations
 
 import textwrap
@@ -15,38 +16,38 @@ from bridgemix.plugins.device import DeviceFacade
 from bridgemix.plugins.manager import PluginManager, PluginStatus
 
 # A working user plugin: returns a trivial widget and records that it ran.
-_GOOD_PLUGIN = textwrap.dedent('''
+_GOOD_PLUGIN = textwrap.dedent("""
     from PyQt6.QtWidgets import QLabel
     from bridgemix.plugins import Plugin
 
     class GoodPlugin(Plugin):
         def create_widget(self, ctx):
             return QLabel("ok")
-''')
+""")
 
 # Entry attribute that is not a Plugin subclass.
-_NOT_A_PLUGIN = textwrap.dedent('''
+_NOT_A_PLUGIN = textwrap.dedent("""
     class NotAPlugin:
         pass
-''')
+""")
 
 # Returns something that isn't a QWidget — the host must reject it.
-_NON_WIDGET_PLUGIN = textwrap.dedent('''
+_NON_WIDGET_PLUGIN = textwrap.dedent("""
     from bridgemix.plugins import Plugin
 
     class NonWidgetPlugin(Plugin):
         def create_widget(self, ctx):
             return "not a widget"
-''')
+""")
 
 # Raises while building its widget — must be caught and reported, not propagated.
-_RAISING_PLUGIN = textwrap.dedent('''
+_RAISING_PLUGIN = textwrap.dedent("""
     from bridgemix.plugins import Plugin
 
     class BoomPlugin(Plugin):
         def create_widget(self, ctx):
             raise RuntimeError("kaboom")
-''')
+""")
 
 
 @pytest.fixture
@@ -61,19 +62,31 @@ def manager(env, qapp):
     return PluginManager(DeviceFacade(BridgeCast()))
 
 
-def _write_plugin(env: Path, folder: str, *, pid: str, module: str, body: str,
-                  entry: str, host_api: str = ">=1.0,<2.0",
-                  module_name: str = "entry", requires: list[str] | None = None) -> Path:
+def _write_plugin(
+    env: Path,
+    folder: str,
+    *,
+    pid: str,
+    module: str,
+    body: str,
+    entry: str,
+    host_api: str = ">=1.0,<2.0",
+    module_name: str = "entry",
+    requires: list[str] | None = None,
+) -> Path:
     pdir = env / "data" / "bridgemix" / "plugins" / folder
     pdir.mkdir(parents=True, exist_ok=True)
     requires_line = f"requires = {list(requires or [])!r}\n"
-    (pdir / "plugin.toml").write_text(textwrap.dedent(f'''
+    (pdir / "plugin.toml").write_text(
+        textwrap.dedent(f'''
         id = "{pid}"
         name = "{folder}"
         version = "1.0.0"
         entry_point = "{module_name}:{entry}"
         host_api = "{host_api}"
-    ''') + requires_line)
+    ''')
+        + requires_line
+    )
     (pdir / f"{module_name}.py").write_text(body)
     return pdir
 
@@ -84,11 +97,11 @@ def _find(manager: PluginManager, pid: str):
 
 # ── Built-in ─────────────────────────────────────────────────────────────────────
 
+
 def test_builtin_remote_api_discovered(manager):
     import importlib.util
-    has_deps = bool(
-        importlib.util.find_spec("fastapi") and importlib.util.find_spec("uvicorn")
-    )
+
+    has_deps = bool(importlib.util.find_spec("fastapi") and importlib.util.find_spec("uvicorn"))
     manager.discover()
     rec = next(r for r in manager.records if r.id.endswith("remote-api"))
     assert rec.is_builtin
@@ -103,9 +116,11 @@ def test_builtin_remote_api_discovered(manager):
 
 # ── User-plugin gating ───────────────────────────────────────────────────────────
 
+
 def test_user_plugin_needs_consent_before_loading(env, manager):
-    _write_plugin(env, "good", pid="com.x.good", module="entry",
-                  body=_GOOD_PLUGIN, entry="GoodPlugin")
+    _write_plugin(
+        env, "good", pid="com.x.good", module="entry", body=_GOOD_PLUGIN, entry="GoodPlugin"
+    )
     manager.discover()
     rec = _find(manager, "com.x.good")
     assert rec.status is PluginStatus.NEEDS_CONSENT
@@ -113,8 +128,9 @@ def test_user_plugin_needs_consent_before_loading(env, manager):
 
 
 def test_consent_loads_and_persists(env, qapp):
-    _write_plugin(env, "good", pid="com.x.good", module="entry",
-                  body=_GOOD_PLUGIN, entry="GoodPlugin")
+    _write_plugin(
+        env, "good", pid="com.x.good", module="entry", body=_GOOD_PLUGIN, entry="GoodPlugin"
+    )
     mgr = PluginManager(DeviceFacade(BridgeCast()))
     mgr.discover()
     mgr.grant_consent(_find(mgr, "com.x.good"))
@@ -127,8 +143,9 @@ def test_consent_loads_and_persists(env, qapp):
 
 
 def test_disable_after_load(env, qapp):
-    _write_plugin(env, "good", pid="com.x.good", module="entry",
-                  body=_GOOD_PLUGIN, entry="GoodPlugin")
+    _write_plugin(
+        env, "good", pid="com.x.good", module="entry", body=_GOOD_PLUGIN, entry="GoodPlugin"
+    )
     mgr = PluginManager(DeviceFacade(BridgeCast()))
     mgr.discover()
     rec = _find(mgr, "com.x.good")
@@ -141,9 +158,15 @@ def test_disable_after_load(env, qapp):
 def test_missing_dependency_blocks_load(env, qapp):
     # A declared requirement that isn't installed gates the plugin: it is not
     # imported, and the missing list is surfaced for the install card.
-    _write_plugin(env, "needsdep", pid="com.x.needsdep", module="entry",
-                  body=_GOOD_PLUGIN, entry="GoodPlugin",
-                  requires=["no-such-dist-xyz>=9"])
+    _write_plugin(
+        env,
+        "needsdep",
+        pid="com.x.needsdep",
+        module="entry",
+        body=_GOOD_PLUGIN,
+        entry="GoodPlugin",
+        requires=["no-such-dist-xyz>=9"],
+    )
     mgr = PluginManager(DeviceFacade(BridgeCast()))
     mgr.discover()
     rec = _find(mgr, "com.x.needsdep")
@@ -155,11 +178,26 @@ def test_missing_dependency_blocks_load(env, qapp):
 
 # ── Cross-plugin dependency conflicts ─────────────────────────────────────────────
 
+
 def _two_conflicting(env):
-    _write_plugin(env, "a", pid="com.x.a", module="entry", body=_GOOD_PLUGIN,
-                  entry="GoodPlugin", requires=["shared-xyz<2"])
-    _write_plugin(env, "b", pid="com.x.b", module="entry", body=_GOOD_PLUGIN,
-                  entry="GoodPlugin", requires=["shared-xyz>=2"])
+    _write_plugin(
+        env,
+        "a",
+        pid="com.x.a",
+        module="entry",
+        body=_GOOD_PLUGIN,
+        entry="GoodPlugin",
+        requires=["shared-xyz<2"],
+    )
+    _write_plugin(
+        env,
+        "b",
+        pid="com.x.b",
+        module="entry",
+        body=_GOOD_PLUGIN,
+        entry="GoodPlugin",
+        requires=["shared-xyz>=2"],
+    )
     mgr = PluginManager(DeviceFacade(BridgeCast()))
     mgr.discover()
     mgr.grant_consent(_find(mgr, "com.x.a"))
@@ -188,10 +226,24 @@ def test_disabling_one_clears_the_others_conflict(env, qapp):
 
 
 def test_install_set_unions_active_plugin_requires(env, qapp):
-    _write_plugin(env, "a", pid="com.x.a", module="entry", body=_GOOD_PLUGIN,
-                  entry="GoodPlugin", requires=["alpha>=1"])
-    _write_plugin(env, "b", pid="com.x.b", module="entry", body=_GOOD_PLUGIN,
-                  entry="GoodPlugin", requires=["beta>=2"])
+    _write_plugin(
+        env,
+        "a",
+        pid="com.x.a",
+        module="entry",
+        body=_GOOD_PLUGIN,
+        entry="GoodPlugin",
+        requires=["alpha>=1"],
+    )
+    _write_plugin(
+        env,
+        "b",
+        pid="com.x.b",
+        module="entry",
+        body=_GOOD_PLUGIN,
+        entry="GoodPlugin",
+        requires=["beta>=2"],
+    )
     mgr = PluginManager(DeviceFacade(BridgeCast()))
     mgr.discover()
     a, b = _find(mgr, "com.x.a"), _find(mgr, "com.x.b")
@@ -205,9 +257,17 @@ def test_install_set_unions_active_plugin_requires(env, qapp):
 
 # ── Compatibility & validation ───────────────────────────────────────────────────
 
+
 def test_incompatible_host_api(env, manager):
-    _write_plugin(env, "old", pid="com.x.old", module="entry",
-                  body=_GOOD_PLUGIN, entry="GoodPlugin", host_api=">=2.0")
+    _write_plugin(
+        env,
+        "old",
+        pid="com.x.old",
+        module="entry",
+        body=_GOOD_PLUGIN,
+        entry="GoodPlugin",
+        host_api=">=2.0",
+    )
     manager.discover()
     rec = _find(manager, "com.x.old")
     assert rec.status is PluginStatus.INCOMPATIBLE
@@ -225,9 +285,11 @@ def test_malformed_manifest_is_error(env, manager):
 
 # ── Error isolation ──────────────────────────────────────────────────────────────
 
+
 def test_entry_not_a_plugin_is_isolated(env, qapp):
-    _write_plugin(env, "bad", pid="com.x.bad", module="entry",
-                  body=_NOT_A_PLUGIN, entry="NotAPlugin")
+    _write_plugin(
+        env, "bad", pid="com.x.bad", module="entry", body=_NOT_A_PLUGIN, entry="NotAPlugin"
+    )
     mgr = PluginManager(DeviceFacade(BridgeCast()))
     mgr.discover()
     mgr.grant_consent(_find(mgr, "com.x.bad"))  # consent → attempt load
@@ -237,8 +299,9 @@ def test_entry_not_a_plugin_is_isolated(env, qapp):
 
 
 def test_raising_create_widget_is_isolated(env, qapp):
-    _write_plugin(env, "boom", pid="com.x.boom", module="entry",
-                  body=_RAISING_PLUGIN, entry="BoomPlugin")
+    _write_plugin(
+        env, "boom", pid="com.x.boom", module="entry", body=_RAISING_PLUGIN, entry="BoomPlugin"
+    )
     mgr = PluginManager(DeviceFacade(BridgeCast()))
     mgr.discover()
     mgr.grant_consent(_find(mgr, "com.x.boom"))
@@ -248,8 +311,14 @@ def test_raising_create_widget_is_isolated(env, qapp):
 
 
 def test_non_widget_return_is_rejected(env, qapp):
-    _write_plugin(env, "badw", pid="com.x.badw", module="entry",
-                  body=_NON_WIDGET_PLUGIN, entry="NonWidgetPlugin")
+    _write_plugin(
+        env,
+        "badw",
+        pid="com.x.badw",
+        module="entry",
+        body=_NON_WIDGET_PLUGIN,
+        entry="NonWidgetPlugin",
+    )
     mgr = PluginManager(DeviceFacade(BridgeCast()))
     mgr.discover()
     mgr.grant_consent(_find(mgr, "com.x.badw"))
@@ -260,10 +329,12 @@ def test_non_widget_return_is_rejected(env, qapp):
 
 
 def test_duplicate_id_keeps_first(env, manager):
-    _write_plugin(env, "a_dup", pid="com.x.dup", module="entry",
-                  body=_GOOD_PLUGIN, entry="GoodPlugin")
-    _write_plugin(env, "b_dup", pid="com.x.dup", module="entry",
-                  body=_GOOD_PLUGIN, entry="GoodPlugin")
+    _write_plugin(
+        env, "a_dup", pid="com.x.dup", module="entry", body=_GOOD_PLUGIN, entry="GoodPlugin"
+    )
+    _write_plugin(
+        env, "b_dup", pid="com.x.dup", module="entry", body=_GOOD_PLUGIN, entry="GoodPlugin"
+    )
     manager.discover()
     matches = [r for r in manager.records if r.id == "com.x.dup"]
     assert len(matches) == 1

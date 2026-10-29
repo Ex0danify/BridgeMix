@@ -8,6 +8,7 @@ version that opens a details popup, a "Built-in" marker, and any primary control
 the plugin surfaces) over a body that is either the live plugin widget or a status
 message.
 """
+
 from __future__ import annotations
 
 from PyQt6.QtCore import Qt, QUrl
@@ -27,10 +28,10 @@ from PyQt6.QtWidgets import (
 from bridgemix import theme
 from bridgemix.gui.widgets.controls import ToggleSwitch
 from bridgemix.gui.widgets.flow_layout import FlowLayout
+from bridgemix.paths import plugins_dir
 from bridgemix.plugins import CardWidth
 from bridgemix.plugins.installer import DependencyInstaller, can_install
 from bridgemix.plugins.manager import PluginManager, PluginRecord, PluginStatus
-from bridgemix.paths import plugins_dir
 
 # User-plugin statuses that still show an enable toggle (so it can be turned off).
 _USER_TOGGLE_STATES = {
@@ -102,9 +103,7 @@ class PluginsPanel(QWidget):
         # The folder hint sits inline next to the title — one tidy header row
         # instead of a separate line under it.
         hint = QLabel(f"Drop a plugin folder into  {plugins_dir()}  and Rescan.")
-        hint.setStyleSheet(
-            f"font-size: 11px; color: {theme.TEXT_MUTED}; background: transparent;"
-        )
+        hint.setStyleSheet(f"font-size: 11px; color: {theme.TEXT_MUTED}; background: transparent;")
         row.addWidget(hint)
 
         row.addStretch()
@@ -145,9 +144,7 @@ class PluginsPanel(QWidget):
         records = self._manager.records
         if not records:
             empty = QLabel("No plugins found.")
-            empty.setStyleSheet(
-                f"color: {theme.TEXT_MUTED}; background: transparent;"
-            )
+            empty.setStyleSheet(f"color: {theme.TEXT_MUTED}; background: transparent;")
             empty.setProperty("fullWidth", True)
             self._cards.addWidget(empty)
             return
@@ -272,8 +269,7 @@ class PluginsPanel(QWidget):
         if record.status is PluginStatus.INCOMPATIBLE:
             need = manifest.host_api if manifest else "?"
             return self._muted(
-                f"Not compatible with this BridgeMix version "
-                f"(needs host API {need})."
+                f"Not compatible with this BridgeMix version (needs host API {need})."
             )
 
         # ERROR
@@ -332,9 +328,7 @@ class PluginsPanel(QWidget):
             "access to your files and network. Only enable plugins you trust."
         )
         warn.setWordWrap(True)
-        warn.setStyleSheet(
-            f"font-size: 11px; color: {theme.RED}; background: transparent;"
-        )
+        warn.setStyleSheet(f"font-size: 11px; color: {theme.RED}; background: transparent;")
         lay.addWidget(warn)
 
         btn = QPushButton("Enable…")
@@ -353,9 +347,7 @@ class PluginsPanel(QWidget):
 
         if can_install():
             btn = QPushButton("Install dependencies")
-            btn.clicked.connect(
-                lambda _=False, r=record, b=btn: self._on_install(r, b)
-            )
+            btn.clicked.connect(lambda _=False, r=record, b=btn: self._on_install(r, b))
             lay.addWidget(btn, alignment=Qt.AlignmentFlag.AlignLeft)
         else:
             lay.addWidget(self._muted(f"Install them, then Rescan:  pip install {reqs}"))
@@ -366,17 +358,13 @@ class PluginsPanel(QWidget):
     def _muted(self, text: str) -> QLabel:
         lbl = QLabel(text)
         lbl.setWordWrap(True)
-        lbl.setStyleSheet(
-            f"font-size: 12px; color: {theme.TEXT_MUTED}; background: transparent;"
-        )
+        lbl.setStyleSheet(f"font-size: 12px; color: {theme.TEXT_MUTED}; background: transparent;")
         return lbl
 
     def _error(self, text: str) -> QLabel:
         lbl = QLabel(text)
         lbl.setWordWrap(True)
-        lbl.setStyleSheet(
-            f"font-size: 12px; color: {theme.RED}; background: transparent;"
-        )
+        lbl.setStyleSheet(f"font-size: 12px; color: {theme.RED}; background: transparent;")
         return lbl
 
     # ── Actions ───────────────────────────────────────────────────────────────

@@ -6,6 +6,7 @@ formats (.brdgcProfile, .brdgcEfx, .brdgcBackup).  Parsed parameters are
 emitted via signals; the parent panel connects those signals to the
 appropriate bridge calls.
 """
+
 from __future__ import annotations
 
 import json
@@ -27,8 +28,7 @@ from PyQt6.QtWidgets import (
 )
 
 _DEFAULT_LOAD_FILTER = (
-    "Roland / BridgeMix (*.brdgcProfile *.brdgcEfx *.brdgcBackup *.json);;"
-    "All Files (*)"
+    "Roland / BridgeMix (*.brdgcProfile *.brdgcEfx *.brdgcBackup *.json);;All Files (*)"
 )
 
 
@@ -64,12 +64,12 @@ class ProfileWidget(QGroupBox):
         the appropriate reset method.
     """
 
-    slot_selected     = pyqtSignal(int)
-    params_loaded     = pyqtSignal(int, dict)
-    write_requested   = pyqtSignal(int, str)
-    save_requested    = pyqtSignal(int)
-    revert_requested  = pyqtSignal(int)
-    library_requested = pyqtSignal()   # only emitted when show_library=True
+    slot_selected = pyqtSignal(int)
+    params_loaded = pyqtSignal(int, dict)
+    write_requested = pyqtSignal(int, str)
+    save_requested = pyqtSignal(int)
+    revert_requested = pyqtSignal(int)
+    library_requested = pyqtSignal()  # only emitted when show_library=True
 
     def __init__(
         self,
@@ -93,9 +93,7 @@ class ProfileWidget(QGroupBox):
         self._list = QListWidget()
         self._list.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self._list.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        self._list.setStyleSheet(
-            "QListWidget::item { padding: 2px 8px; font-size: 12px; }"
-        )
+        self._list.setStyleSheet("QListWidget::item { padding: 2px 8px; font-size: 12px; }")
         for i in range(num_slots):
             self._list.addItem(QListWidgetItem(f"{i + 1}  Slot {i + 1}"))
         self._list.setCurrentRow(0)
@@ -112,10 +110,10 @@ class ProfileWidget(QGroupBox):
         btn_row = QHBoxLayout()
         btn_row.setSpacing(4)
 
-        self._btn_load    = QPushButton("Load")
-        self._btn_write   = QPushButton("Write")
-        self._btn_save    = QPushButton("Save")
-        self._btn_revert  = QPushButton("Revert")
+        self._btn_load = QPushButton("Load")
+        self._btn_write = QPushButton("Write")
+        self._btn_save = QPushButton("Save")
+        self._btn_revert = QPushButton("Revert")
         self._btn_library = QPushButton("Library")
 
         buttons = [self._btn_load, self._btn_write, self._btn_save]
@@ -179,9 +177,7 @@ class ProfileWidget(QGroupBox):
         if slot < 0:
             return
 
-        path_str, _ = QFileDialog.getOpenFileName(
-            self, "Load from File", "", self._load_filter
-        )
+        path_str, _ = QFileDialog.getOpenFileName(self, "Load from File", "", self._load_filter)
         if not path_str:
             return
 
@@ -196,9 +192,7 @@ class ProfileWidget(QGroupBox):
         if raw.get("ExportApp") == "BridgeMix":
             params = raw.get("parameters", {})
             if not params:
-                QMessageBox.warning(
-                    self, "Nothing Loaded", "No parameters found in file."
-                )
+                QMessageBox.warning(self, "Nothing Loaded", "No parameters found in file.")
                 return
             self.params_loaded.emit(slot, dict(params))
             return
@@ -274,8 +268,7 @@ class ProfileWidget(QGroupBox):
         reply = QMessageBox.question(
             self,
             "Reset to Factory Defaults",
-            f'Reset "{name}" (slot {slot + 1}) to factory defaults?\n\n'
-            "This cannot be undone.",
+            f'Reset "{name}" (slot {slot + 1}) to factory defaults?\n\nThis cannot be undone.',
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
         )
         if reply == QMessageBox.StandardButton.Yes:

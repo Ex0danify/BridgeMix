@@ -7,6 +7,7 @@ Usage::
     widget = EqWidget("mic_eq", bridge)
     layout.addWidget(widget)
 """
+
 from __future__ import annotations
 
 import math
@@ -14,10 +15,14 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 import numpy as np
-from PyQt6.QtCore import Qt, QPointF, QRectF, QTimer
+from PyQt6.QtCore import QPointF, QRectF, Qt, QTimer
 from PyQt6.QtGui import QColor, QFont, QFontMetrics, QPainter, QPainterPath, QPen
 from PyQt6.QtWidgets import (
-    QHBoxLayout, QLabel, QSizePolicy, QVBoxLayout, QWidget,
+    QHBoxLayout,
+    QLabel,
+    QSizePolicy,
+    QVBoxLayout,
+    QWidget,
 )
 
 from bridgemix import theme
@@ -30,13 +35,14 @@ if TYPE_CHECKING:
 
 # ── Band metadata ─────────────────────────────────────────────────────────────
 
+
 @dataclass(frozen=True)
 class _Band:
-    n: int           # 1-based band number
-    kind: str        # 'peak' | 'low_shelf' | 'high_shelf'
-    f_min: float     # Hz at raw param = 0
-    f_max: float     # Hz at raw param = f_steps
-    f_steps: int     # max raw value for freq
+    n: int  # 1-based band number
+    kind: str  # 'peak' | 'low_shelf' | 'high_shelf'
+    f_min: float  # Hz at raw param = 0
+    f_max: float  # Hz at raw param = f_steps
+    f_steps: int  # max raw value for freq
     has_q: bool
     # Explicit raw->Hz table (index = raw value).  When given, the device uses a
     # fixed frequency list rather than a smooth log curve, so _raw_to_freq /
@@ -50,21 +56,132 @@ class _Band:
 def _ftab(*hz: float) -> tuple[float, ...]:
     return tuple(float(x) for x in hz)
 
-_FREQS_B1 = _ftab(20, 25, 30, 35, 40, 50, 62, 70, 78, 88, 100, 110, 125, 148,
-                  176, 200, 220, 250, 300, 350, 400)
-_FREQS_B234 = _ftab(20, 25, 30, 35, 40, 44, 50, 55, 62, 70, 74, 78, 83, 88, 93,
-                    100, 110, 125, 148, 176, 200, 250, 300, 315, 330, 350, 375,
-                    400, 420, 445, 470)
-_FREQS_B567 = _ftab(315, 330, 350, 375, 400, 420, 445, 470, 500, 530, 560, 600,
-                    630, 665, 700, 750, 800, 840, 900, 940, 1000, 1200, 1400,
-                    1600, 1800, 2000, 2200, 2500, 2700, 3000, 3300)
-_FREQS_B89 = _ftab(3000, 3300, 3600, 3800, 4000, 4200, 4500, 4800, 5000, 5300,
-                   5700, 6000, 6300, 6700, 7000, 7600, 8000, 8500, 9000, 9500,
-                   10000, 11000, 12000, 13000, 14000, 15000, 16000, 17000,
-                   18000, 19000, 20000)
-_FREQS_B10 = _ftab(800, 1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000, 9000,
-                   10000, 11000, 12000, 13000, 14000, 15000, 16000, 17000,
-                   18000, 19000, 20000)
+
+_FREQS_B1 = _ftab(
+    20, 25, 30, 35, 40, 50, 62, 70, 78, 88, 100, 110, 125, 148, 176, 200, 220, 250, 300, 350, 400
+)
+_FREQS_B234 = _ftab(
+    20,
+    25,
+    30,
+    35,
+    40,
+    44,
+    50,
+    55,
+    62,
+    70,
+    74,
+    78,
+    83,
+    88,
+    93,
+    100,
+    110,
+    125,
+    148,
+    176,
+    200,
+    250,
+    300,
+    315,
+    330,
+    350,
+    375,
+    400,
+    420,
+    445,
+    470,
+)
+_FREQS_B567 = _ftab(
+    315,
+    330,
+    350,
+    375,
+    400,
+    420,
+    445,
+    470,
+    500,
+    530,
+    560,
+    600,
+    630,
+    665,
+    700,
+    750,
+    800,
+    840,
+    900,
+    940,
+    1000,
+    1200,
+    1400,
+    1600,
+    1800,
+    2000,
+    2200,
+    2500,
+    2700,
+    3000,
+    3300,
+)
+_FREQS_B89 = _ftab(
+    3000,
+    3300,
+    3600,
+    3800,
+    4000,
+    4200,
+    4500,
+    4800,
+    5000,
+    5300,
+    5700,
+    6000,
+    6300,
+    6700,
+    7000,
+    7600,
+    8000,
+    8500,
+    9000,
+    9500,
+    10000,
+    11000,
+    12000,
+    13000,
+    14000,
+    15000,
+    16000,
+    17000,
+    18000,
+    19000,
+    20000,
+)
+_FREQS_B10 = _ftab(
+    800,
+    1000,
+    2000,
+    3000,
+    4000,
+    5000,
+    6000,
+    7000,
+    8000,
+    9000,
+    10000,
+    11000,
+    12000,
+    13000,
+    14000,
+    15000,
+    16000,
+    17000,
+    18000,
+    19000,
+    20000,
+)
 
 
 def _band(n: int, kind: str, has_q: bool, freqs: tuple[float, ...]) -> _Band:
@@ -72,61 +189,62 @@ def _band(n: int, kind: str, has_q: bool, freqs: tuple[float, ...]) -> _Band:
 
 
 _BANDS: list[_Band] = [
-    _band(1,  'low_shelf',  False, _FREQS_B1),
-    _band(2,  'peak',       True,  _FREQS_B234),
-    _band(3,  'peak',       True,  _FREQS_B234),
-    _band(4,  'peak',       True,  _FREQS_B234),
-    _band(5,  'peak',       True,  _FREQS_B567),
-    _band(6,  'peak',       True,  _FREQS_B567),
-    _band(7,  'peak',       True,  _FREQS_B567),
-    _band(8,  'peak',       True,  _FREQS_B89),
-    _band(9,  'peak',       True,  _FREQS_B89),
-    _band(10, 'high_shelf', False, _FREQS_B10),
+    _band(1, "low_shelf", False, _FREQS_B1),
+    _band(2, "peak", True, _FREQS_B234),
+    _band(3, "peak", True, _FREQS_B234),
+    _band(4, "peak", True, _FREQS_B234),
+    _band(5, "peak", True, _FREQS_B567),
+    _band(6, "peak", True, _FREQS_B567),
+    _band(7, "peak", True, _FREQS_B567),
+    _band(8, "peak", True, _FREQS_B89),
+    _band(9, "peak", True, _FREQS_B89),
+    _band(10, "high_shelf", False, _FREQS_B10),
 ]
 
 _REGIONS: list[tuple[str, float, float]] = [
-    ("SUB BASS",         20.0,    80.0),
-    ("BOOM",             80.0,   200.0),
-    ("BROADCAST",       200.0,   600.0),
-    ("NASAL",           600.0,  1500.0),
-    ("PRESENCE & ESSES",1500.0, 8000.0),
-    ("AIR",            8000.0, 20000.0),
+    ("SUB BASS", 20.0, 80.0),
+    ("BOOM", 80.0, 200.0),
+    ("BROADCAST", 200.0, 600.0),
+    ("NASAL", 600.0, 1500.0),
+    ("PRESENCE & ESSES", 1500.0, 8000.0),
+    ("AIR", 8000.0, 20000.0),
 ]
 
-_DB_MAX  = 12.0       # ±dB visible on Y axis (device gain range is ±12 dB)
+_DB_MAX = 12.0  # ±dB visible on Y axis (device gain range is ±12 dB)
 
 # Spectrum analyzer overlay (Game EQ): dBFS range mapped to the canvas height,
 # and the number of horizontal buckets the FFT bins are reduced to for drawing.
-_SPEC_DB_MIN  = -90.0
-_SPEC_DB_MAX  = -20.0
+_SPEC_DB_MIN = -90.0
+_SPEC_DB_MAX = -20.0
 _SPEC_BUCKETS = 256
-_SPEC_SMOOTH3 = np.array([0.25, 0.5, 0.25])   # light edge-softening kernel
-_C_SPECTRUM   = QColor(150, 152, 162)
-_FS      = 48000.0    # sample rate for biquad math
-_N_PLOT  = 300        # number of frequency points in curve
+_SPEC_SMOOTH3 = np.array([0.25, 0.5, 0.25])  # light edge-softening kernel
+_C_SPECTRUM = QColor(150, 152, 162)
+_FS = 48000.0  # sample rate for biquad math
+_N_PLOT = 300  # number of frequency points in curve
 _LOG_RNG = math.log10(20000.0 / 20.0)
 
 # Colors
-_C_BG       = QColor(theme.BG)
-_C_GRID     = QColor(theme.TEXT_FAINT)
+_C_BG = QColor(theme.BG)
+_C_GRID = QColor(theme.TEXT_FAINT)
 _C_ZERO_LINE = QColor(theme.SURFACE_5)
-_C_CURVE    = QColor(theme.ACCENT)
-_C_NODE     = QColor(255, 255, 255)
+_C_CURVE = QColor(theme.ACCENT)
+_C_NODE = QColor(255, 255, 255)
 _C_NODE_HOV = QColor(theme.ACCENT_HOVER)
-_C_LABEL    = QColor(theme.TEXT_MUTED)
+_C_LABEL = QColor(theme.TEXT_MUTED)
 
-_NODE_R   = 5    # px radius of band dot
-_NODE_HIT = 14   # px hit-test radius
+_NODE_R = 5  # px radius of band dot
+_NODE_HIT = 14  # px hit-test radius
 
 # Max device-write rate while dragging a band.  Qt fires many move events per
 # pixel; without coalescing, a fast EQ sweep bursts DT1 writes faster than the
 # device's MIDI input buffer drains and overflows it.  The node still follows the
 # mouse every frame (painted from pending values); only the TX is rate-limited,
 # and the final value is always flushed on mouse release.
-_TX_THROTTLE_MS = 40   # ~25 Hz
+_TX_THROTTLE_MS = 40  # ~25 Hz
 
 
 # ── Parameter ↔ physical value conversions ────────────────────────────────────
+
 
 def _raw_to_freq(raw: int, band: _Band) -> float:
     """Map device integer to Hz (fixed table if the band has one, else log)."""
@@ -159,9 +277,38 @@ def _db_to_raw(db: float) -> int:
 # Device Q table (index = raw value), confirmed 2026-06-01 sweep — shared by all
 # peak bands (2-9).  32 steps: 0.3 (widest) … 16.0 (narrowest).
 _Q_TABLE: tuple[float, ...] = (
-    0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.4, 1.6, 1.8, 2.0, 2.2,
-    2.5, 2.8, 3.1, 3.5, 4.0, 4.5, 5.0, 5.6, 6.3, 7.1, 8.0, 9.0, 10.0, 11.2,
-    12.5, 14.0, 16.0,
+    0.3,
+    0.4,
+    0.5,
+    0.6,
+    0.7,
+    0.8,
+    0.9,
+    1.0,
+    1.1,
+    1.2,
+    1.4,
+    1.6,
+    1.8,
+    2.0,
+    2.2,
+    2.5,
+    2.8,
+    3.1,
+    3.5,
+    4.0,
+    4.5,
+    5.0,
+    5.6,
+    6.3,
+    7.1,
+    8.0,
+    9.0,
+    10.0,
+    11.2,
+    12.5,
+    14.0,
+    16.0,
 )
 
 
@@ -171,6 +318,7 @@ def _raw_to_q(raw: int) -> float:
 
 
 # ── Canvas coordinate helpers ─────────────────────────────────────────────────
+
 
 def _fx(hz: float, w: float) -> float:
     """Frequency (Hz) → X pixel on [0, w], log scale."""
@@ -194,80 +342,85 @@ def _yf(y: float, h: float) -> float:
 
 # ── Biquad magnitude response ─────────────────────────────────────────────────
 
-def _mag_db(f: float, b0: float, b1: float, b2: float,
-            a0: float, a1: float, a2: float) -> float:
+
+def _mag_db(f: float, b0: float, b1: float, b2: float, a0: float, a1: float, a2: float) -> float:
     """Evaluate a biquad's magnitude response in dB at frequency f Hz."""
     w = 2.0 * math.pi * f / _FS
-    cw  = math.cos(w);   sw  = math.sin(w)
-    c2w = math.cos(2*w); s2w = math.sin(2*w)
-    nr = b0 + b1*cw + b2*c2w;  ni = -(b1*sw + b2*s2w)
-    dr = a0 + a1*cw + a2*c2w;  di = -(a1*sw + a2*s2w)
-    d2 = dr*dr + di*di
+    cw = math.cos(w)
+    sw = math.sin(w)
+    c2w = math.cos(2 * w)
+    s2w = math.sin(2 * w)
+    nr = b0 + b1 * cw + b2 * c2w
+    ni = -(b1 * sw + b2 * s2w)
+    dr = a0 + a1 * cw + a2 * c2w
+    di = -(a1 * sw + a2 * s2w)
+    d2 = dr * dr + di * di
     if d2 < 1e-30:
         return 0.0
-    return 10.0 * math.log10(max((nr*nr + ni*ni) / d2, 1e-20))
+    return 10.0 * math.log10(max((nr * nr + ni * ni) / d2, 1e-20))
 
 
 def _peak_db(f: float, f0: float, gain_db: float, Q: float) -> float:
     if abs(gain_db) < 0.01:
         return 0.0
-    A    = 10.0 ** (gain_db / 40.0)
-    w0   = 2.0 * math.pi * f0 / _FS
+    A = 10.0 ** (gain_db / 40.0)
+    w0 = 2.0 * math.pi * f0 / _FS
     alph = math.sin(w0) / (2.0 * max(0.1, Q))
-    b1   = -2.0 * math.cos(w0)
-    return _mag_db(f, 1.0+alph*A, b1, 1.0-alph*A,
-                      1.0+alph/A, b1, 1.0-alph/A)
+    b1 = -2.0 * math.cos(w0)
+    return _mag_db(f, 1.0 + alph * A, b1, 1.0 - alph * A, 1.0 + alph / A, b1, 1.0 - alph / A)
 
 
 def _shelf_db(f: float, f0: float, gain_db: float, high: bool) -> float:
     if abs(gain_db) < 0.01:
         return 0.0
-    A    = 10.0 ** (gain_db / 40.0)
-    w0   = 2.0 * math.pi * f0 / _FS
-    cw   = math.cos(w0); sw = math.sin(w0)
+    A = 10.0 ** (gain_db / 40.0)
+    w0 = 2.0 * math.pi * f0 / _FS
+    cw = math.cos(w0)
+    sw = math.sin(w0)
     alph = sw / 2.0 * math.sqrt(2.0)
-    sqA  = math.sqrt(A)
+    sqA = math.sqrt(A)
     if not high:
-        b0 =  A*((A+1)-(A-1)*cw+2*sqA*alph)
-        b1 = 2*A*((A-1)-(A+1)*cw)
-        b2 =  A*((A+1)-(A-1)*cw-2*sqA*alph)
-        a0 =    (A+1)+(A-1)*cw+2*sqA*alph
-        a1 = -2*((A-1)+(A+1)*cw)
-        a2 =    (A+1)+(A-1)*cw-2*sqA*alph
+        b0 = A * ((A + 1) - (A - 1) * cw + 2 * sqA * alph)
+        b1 = 2 * A * ((A - 1) - (A + 1) * cw)
+        b2 = A * ((A + 1) - (A - 1) * cw - 2 * sqA * alph)
+        a0 = (A + 1) + (A - 1) * cw + 2 * sqA * alph
+        a1 = -2 * ((A - 1) + (A + 1) * cw)
+        a2 = (A + 1) + (A - 1) * cw - 2 * sqA * alph
     else:
-        b0 =  A*((A+1)+(A-1)*cw+2*sqA*alph)
-        b1 = -2*A*((A-1)+(A+1)*cw)
-        b2 =  A*((A+1)+(A-1)*cw-2*sqA*alph)
-        a0 =    (A+1)-(A-1)*cw+2*sqA*alph
-        a1 =  2*((A-1)-(A+1)*cw)
-        a2 =    (A+1)-(A-1)*cw-2*sqA*alph
+        b0 = A * ((A + 1) + (A - 1) * cw + 2 * sqA * alph)
+        b1 = -2 * A * ((A - 1) + (A + 1) * cw)
+        b2 = A * ((A + 1) + (A - 1) * cw - 2 * sqA * alph)
+        a0 = (A + 1) - (A - 1) * cw + 2 * sqA * alph
+        a1 = 2 * ((A - 1) - (A + 1) * cw)
+        a2 = (A + 1) - (A - 1) * cw - 2 * sqA * alph
     return _mag_db(f, b0, b1, b2, a0, a1, a2)
 
 
 def _band_db(f: float, band: _Band, gain_db: float, f0: float, Q: float) -> float:
-    if band.kind == 'peak':
+    if band.kind == "peak":
         return _peak_db(f, f0, gain_db, Q)
-    return _shelf_db(f, f0, gain_db, high=(band.kind == 'high_shelf'))
+    return _shelf_db(f, f0, gain_db, high=(band.kind == "high_shelf"))
 
 
 # ── EQ canvas (the painted widget) ────────────────────────────────────────────
 
+
 class _EqCanvas(QWidget):
     """Dark canvas with grid, frequency response curve, and draggable band nodes."""
 
-    def __init__(self, prefix: str, bridge: "BridgeCast") -> None:
+    def __init__(self, prefix: str, bridge: BridgeCast) -> None:
         super().__init__()
         self._prefix = prefix
         self._bridge = bridge
 
         # Drag state
-        self._drag_band:      int | None = None
-        self._hover_band:     int | None = None
-        self._drag_mouse_x:   float = 0.0
-        self._drag_mouse_y:   float = 0.0
-        self._drag_node_x:    float = 0.0
-        self._drag_node_y:    float = 0.0
-        self._drag_f_raw:     int   = 0
+        self._drag_band: int | None = None
+        self._hover_band: int | None = None
+        self._drag_mouse_x: float = 0.0
+        self._drag_mouse_y: float = 0.0
+        self._drag_node_x: float = 0.0
+        self._drag_node_y: float = 0.0
+        self._drag_f_raw: int = 0
 
         self._curve: list[tuple[float, float]] = []
         # Spectrum overlay: per-bucket normalized level [0,1] (None = no data).
@@ -298,15 +451,15 @@ class _EqCanvas(QWidget):
         return self._pending.get(name, self._bridge.get_parameter(name))
 
     def _gain_db(self, idx: int) -> float:
-        return _raw_to_db(self._eff(self._pname(idx + 1, 'gain')))
+        return _raw_to_db(self._eff(self._pname(idx + 1, "gain")))
 
     def _freq_hz(self, idx: int) -> float:
-        return _raw_to_freq(self._eff(self._pname(idx + 1, 'freq')), _BANDS[idx])
+        return _raw_to_freq(self._eff(self._pname(idx + 1, "freq")), _BANDS[idx])
 
     def _q_val(self, idx: int) -> float:
         if not _BANDS[idx].has_q:
             return 0.707
-        return _raw_to_q(self._bridge.get_parameter(self._pname(idx + 1, 'q')))
+        return _raw_to_q(self._bridge.get_parameter(self._pname(idx + 1, "q")))
 
     def _node_pos(self, idx: int) -> tuple[float, float]:
         w, h = float(self.width()), float(self.height())
@@ -336,7 +489,7 @@ class _EqCanvas(QWidget):
         self._curve = pts
 
     def _on_param(self, name: str, _v: int) -> None:
-        prefix = self._prefix + '_band'
+        prefix = self._prefix + "_band"
         if name.startswith(prefix):
             self._recompute()
             self.update()
@@ -356,7 +509,7 @@ class _EqCanvas(QWidget):
         m = (freqs >= 20.0) & (freqs <= 20000.0)
         if int(m.sum()) < 2:
             return
-        xf = np.log10(freqs[m] / 20.0) / _LOG_RNG               # 0..1 across the axis
+        xf = np.log10(freqs[m] / 20.0) / _LOG_RNG  # 0..1 across the axis
         idx = np.clip((xf * _SPEC_BUCKETS).astype(int), 0, _SPEC_BUCKETS - 1)
         filled = np.full(_SPEC_BUCKETS, -np.inf)
         np.maximum.at(filled, idx, db[m])
@@ -364,10 +517,8 @@ class _EqCanvas(QWidget):
         if int(has.sum()) < 2:
             return
         allx = np.arange(_SPEC_BUCKETS)
-        bucket_db = np.interp(allx, allx[has], filled[has])     # fill empty buckets
-        level = np.clip(
-            (bucket_db - _SPEC_DB_MIN) / (_SPEC_DB_MAX - _SPEC_DB_MIN), 0.0, 1.0
-        )
+        bucket_db = np.interp(allx, allx[has], filled[has])  # fill empty buckets
+        level = np.clip((bucket_db - _SPEC_DB_MIN) / (_SPEC_DB_MAX - _SPEC_DB_MIN), 0.0, 1.0)
         # Light edge-softening (3-tap) — rounds hard bucket steps, keeps detail.
         level = np.convolve(level, _SPEC_SMOOTH3, mode="same")
         # Light temporal smoothing: instant attack, moderate release.
@@ -395,13 +546,13 @@ class _EqCanvas(QWidget):
         px, py = event.position().x(), event.position().y()
         i = self._hit_test(px, py)
         if i is not None:
-            self._drag_band    = i
+            self._drag_band = i
             self._drag_mouse_x = px
             self._drag_mouse_y = py
             self._drag_node_x, self._drag_node_y = self._node_pos(i)
-            self._drag_f_raw = self._bridge.get_parameter(self._pname(i + 1, 'freq'))
+            self._drag_f_raw = self._bridge.get_parameter(self._pname(i + 1, "freq"))
             self.setCursor(Qt.CursorShape.SizeAllCursor)
-            self._tx_timer.start()       # begin rate-limited device writes
+            self._tx_timer.start()  # begin rate-limited device writes
 
     def mouseMoveEvent(self, event) -> None:
         px, py = event.position().x(), event.position().y()
@@ -412,12 +563,13 @@ class _EqCanvas(QWidget):
             # device.  Each axis is independent, so a purely vertical (gain) drag
             # queues no frequency change (and vice versa).
             new_gain = _db_to_raw(_yf(self._drag_node_y + (py - self._drag_mouse_y), h))
-            self._queue_param(self._pname(i + 1, 'gain'), new_gain)
-            band   = _BANDS[i]
-            new_f  = max(band.f_min, min(band.f_max,
-                         _xf(self._drag_node_x + (px - self._drag_mouse_x), w)))
-            self._queue_param(self._pname(i + 1, 'freq'), _freq_to_raw(new_f, band))
-            self.update()                # node follows the mouse every frame
+            self._queue_param(self._pname(i + 1, "gain"), new_gain)
+            band = _BANDS[i]
+            new_f = max(
+                band.f_min, min(band.f_max, _xf(self._drag_node_x + (px - self._drag_mouse_x), w))
+            )
+            self._queue_param(self._pname(i + 1, "freq"), _freq_to_raw(new_f, band))
+            self.update()  # node follows the mouse every frame
         else:
             prev = self._hover_band
             self._hover_band = self._hit_test(px, py)
@@ -432,7 +584,7 @@ class _EqCanvas(QWidget):
     def mouseReleaseEvent(self, event) -> None:
         if event.button() == Qt.MouseButton.LeftButton and self._drag_band is not None:
             self._tx_timer.stop()
-            self._flush_pending()        # guarantee the final value reaches the device
+            self._flush_pending()  # guarantee the final value reaches the device
             self._drag_band = None
             self.setCursor(Qt.CursorShape.CrossCursor)
 
@@ -465,7 +617,7 @@ class _EqCanvas(QWidget):
         p = QPainter(self)
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
         w, h = float(self.width()), float(self.height())
-        RGN_H = 22.0   # region label strip height
+        RGN_H = 22.0  # region label strip height
 
         # Background
         p.fillRect(self.rect(), _C_BG)
@@ -507,12 +659,22 @@ class _EqCanvas(QWidget):
             p.drawLine(QPointF(x, RGN_H), QPointF(x, h))
 
         p.setPen(QPen(_C_LABEL))
-        for freq, lbl in ((50,"50"), (100,"100"), (200,"200"),
-                          (500,"500"), (1000,"1k"), (2000,"2k"),
-                          (5000,"5k"), (10000,"10k")):
+        for freq, lbl in (
+            (50, "50"),
+            (100, "100"),
+            (200, "200"),
+            (500, "500"),
+            (1000, "1k"),
+            (2000, "2k"),
+            (5000, "5k"),
+            (10000, "10k"),
+        ):
             x = _fx(float(freq), w)
-            p.drawText(QRectF(x - 16.0, h - 15.0, 32.0, 13.0),
-                       Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignVCenter, lbl)
+            p.drawText(
+                QRectF(x - 16.0, h - 15.0, 32.0, 13.0),
+                Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignVCenter,
+                lbl,
+            )
 
         # Spectrum analyzer overlay (filled, drawn behind the EQ curve)
         if self._spec_y is not None and len(self._spec_y) > 1:
@@ -551,15 +713,22 @@ class _EqCanvas(QWidget):
             p.fillPath(fill, fc)
 
             # Curve stroke
-            p.setPen(QPen(_C_CURVE, 2.0, Qt.PenStyle.SolidLine,
-                          Qt.PenCapStyle.RoundCap, Qt.PenJoinStyle.RoundJoin))
+            p.setPen(
+                QPen(
+                    _C_CURVE,
+                    2.0,
+                    Qt.PenStyle.SolidLine,
+                    Qt.PenCapStyle.RoundCap,
+                    Qt.PenJoinStyle.RoundJoin,
+                )
+            )
             p.setBrush(Qt.BrushStyle.NoBrush)
             p.drawPath(path)
 
         # Band nodes
         for i in range(10):
             nx, ny = self._node_pos(i)
-            hot = (i == self._hover_band or i == self._drag_band)
+            hot = i == self._hover_band or i == self._drag_band
             r = float(_NODE_R)
             if hot:
                 glow = QColor(theme.ACCENT)
@@ -578,21 +747,21 @@ class _EqCanvas(QWidget):
         p.end()
 
     def _draw_drag_tooltip(self, p: QPainter, w: float, h: float, idx: int) -> None:
-        band   = _BANDS[idx]
-        f_hz   = self._freq_hz(idx)
-        db     = self._gain_db(idx)
+        band = _BANDS[idx]
+        f_hz = self._freq_hz(idx)
+        db = self._gain_db(idx)
 
-        freq_str = f"{f_hz/1000:.2f} kHz" if f_hz >= 1000.0 else f"{int(round(f_hz))} Hz"
-        db_str   = "0 dB" if db == 0.0 else f"{db:+.0f} dB"
+        freq_str = f"{f_hz / 1000:.2f} kHz" if f_hz >= 1000.0 else f"{int(round(f_hz))} Hz"
+        db_str = "0 dB" if db == 0.0 else f"{db:+.0f} dB"
         lines: list[tuple[str, bool]] = [
             (freq_str, False),
-            (db_str,   True),   # bold
+            (db_str, True),  # bold
         ]
         if band.has_q:
             lines.append((f"Q  {self._q_val(idx):.1f}", False))
 
-        PAD   = 8.0
-        GAP   = 3.0
+        PAD = 8.0
+        GAP = 3.0
         CORNER = 6.0
 
         fnt_reg = QFont()
@@ -602,15 +771,21 @@ class _EqCanvas(QWidget):
         fnt_bold.setWeight(QFont.Weight.DemiBold)
 
         p.setFont(fnt_reg)
-        fm     = p.fontMetrics()
-        lh     = float(fm.height())
+        fm = p.fontMetrics()
+        lh = float(fm.height())
         ascent = float(fm.ascent())
 
         fm_bold = QFontMetrics(fnt_bold)
-        box_w = float(max(
-            fm_bold.horizontalAdvance(t) if bold else fm.horizontalAdvance(t)
-            for t, bold in lines
-        )) + PAD * 2.0 + 4.0
+        box_w = (
+            float(
+                max(
+                    fm_bold.horizontalAdvance(t) if bold else fm.horizontalAdvance(t)
+                    for t, bold in lines
+                )
+            )
+            + PAD * 2.0
+            + 4.0
+        )
         box_h = len(lines) * lh + (len(lines) - 1) * GAP + PAD * 2.0
 
         # Prefer right of node; flip left if it would overflow
@@ -623,7 +798,7 @@ class _EqCanvas(QWidget):
 
         # Box background
         box = QRectF(bx, by, box_w, box_h)
-        bg  = QColor(theme.SURFACE_3)
+        bg = QColor(theme.SURFACE_3)
         bg.setAlpha(230)
         p.setBrush(bg)
         border = QColor(theme.ACCENT)
@@ -643,6 +818,7 @@ class _EqCanvas(QWidget):
 
 # ── Advanced detail section ────────────────────────────────────────────────────
 
+
 class _AdvancedSection(QWidget):
     """
     Four-row band detail grid shown when ADVANCED is toggled on:
@@ -652,16 +828,16 @@ class _AdvancedSection(QWidget):
       Row 3 — Q sliders       (peak bands only)
     """
 
-    def __init__(self, prefix: str, bridge: "BridgeCast") -> None:
+    def __init__(self, prefix: str, bridge: BridgeCast) -> None:
         super().__init__()
         self._prefix = prefix
         self._bridge = bridge
-        self._block  = False
+        self._block = False
 
-        self._freq_lbls: list[QLabel]        = []
-        self._db_lbls:   list[QLabel]        = []
-        self._q_lbls:    list[QLabel | None] = []
-        self._q_sls:     list[Slider | None] = []
+        self._freq_lbls: list[QLabel] = []
+        self._db_lbls: list[QLabel] = []
+        self._q_lbls: list[QLabel | None] = []
+        self._q_sls: list[Slider | None] = []
 
         vlay = QVBoxLayout(self)
         vlay.setContentsMargins(0, 8, 0, 0)
@@ -673,9 +849,7 @@ class _AdvancedSection(QWidget):
         for i in range(10):
             lbl = QLabel(self._fmt_freq(i))
             lbl.setAlignment(Qt.AlignmentFlag.AlignHCenter)
-            lbl.setStyleSheet(
-                "font-size: 10px; color: #7a7a82; background-color: transparent;"
-            )
+            lbl.setStyleSheet("font-size: 10px; color: #7a7a82; background-color: transparent;")
             freq_row.addWidget(lbl, stretch=1)
             self._freq_lbls.append(lbl)
         vlay.addLayout(freq_row)
@@ -687,8 +861,7 @@ class _AdvancedSection(QWidget):
             lbl = QLabel(self._fmt_db(i))
             lbl.setAlignment(Qt.AlignmentFlag.AlignHCenter)
             lbl.setStyleSheet(
-                "font-size: 11px; font-weight: 600; color: #e8e8ea;"
-                " background-color: transparent;"
+                "font-size: 11px; font-weight: 600; color: #e8e8ea; background-color: transparent;"
             )
             db_row.addWidget(lbl, stretch=1)
             self._db_lbls.append(lbl)
@@ -701,9 +874,7 @@ class _AdvancedSection(QWidget):
             if band.has_q:
                 lbl = QLabel(self._fmt_q(i))
                 lbl.setAlignment(Qt.AlignmentFlag.AlignHCenter)
-                lbl.setStyleSheet(
-                    "font-size: 10px; color: #7a7a82; background-color: transparent;"
-                )
+                lbl.setStyleSheet("font-size: 10px; color: #7a7a82; background-color: transparent;")
                 q_val_row.addWidget(lbl, stretch=1)
                 self._q_lbls.append(lbl)
             else:
@@ -721,9 +892,7 @@ class _AdvancedSection(QWidget):
                 sl = Slider(Qt.Orientation.Horizontal)
                 sl.setRange(0, 31)
                 sl.setValue(bridge.get_parameter(f"{prefix}_band{band.n}_q"))
-                sl.valueChanged.connect(
-                    lambda v, ii=i, bn=band.n: self._on_q_slider(v, ii, bn)
-                )
+                sl.valueChanged.connect(lambda v, ii=i, bn=band.n: self._on_q_slider(v, ii, bn))
                 slider_row.addWidget(sl, stretch=1)
                 self._q_sls.append(sl)
             else:
@@ -739,15 +908,13 @@ class _AdvancedSection(QWidget):
 
     def _fmt_freq(self, idx: int) -> str:
         f = _raw_to_freq(
-            self._bridge.get_parameter(f"{self._prefix}_band{idx+1}_freq"),
+            self._bridge.get_parameter(f"{self._prefix}_band{idx + 1}_freq"),
             _BANDS[idx],
         )
-        return f"{f/1000:.1f}k" if f >= 1000.0 else f"{int(round(f))}Hz"
+        return f"{f / 1000:.1f}k" if f >= 1000.0 else f"{int(round(f))}Hz"
 
     def _fmt_db(self, idx: int) -> str:
-        db = _raw_to_db(
-            self._bridge.get_parameter(f"{self._prefix}_band{idx+1}_gain")
-        )
+        db = _raw_to_db(self._bridge.get_parameter(f"{self._prefix}_band{idx + 1}_gain"))
         if db == 0.0:
             return "0 dB"
         return f"{db:+.0f} dB"
@@ -755,7 +922,7 @@ class _AdvancedSection(QWidget):
     def _fmt_q(self, idx: int) -> str:
         if not _BANDS[idx].has_q:
             return ""
-        return f"{_raw_to_q(self._bridge.get_parameter(f'{self._prefix}_band{idx+1}_q')):.1f}"
+        return f"{_raw_to_q(self._bridge.get_parameter(f'{self._prefix}_band{idx + 1}_q')):.1f}"
 
     # ── signal handlers ───────────────────────────────────────────────────────
 
@@ -768,13 +935,13 @@ class _AdvancedSection(QWidget):
             q_lbl.setText(self._fmt_q(band_idx))
 
     def _on_param(self, name: str, value: int) -> None:
-        pfx = self._prefix + '_band'
+        pfx = self._prefix + "_band"
         if not name.startswith(pfx):
             return
         # Determine which band changed (fast path: update only that band)
-        suffix = name[len(pfx):]          # e.g. "3_gain" or "7_q"
+        suffix = name[len(pfx) :]  # e.g. "3_gain" or "7_q"
         try:
-            band_n = int(suffix.split('_')[0])
+            band_n = int(suffix.split("_")[0])
             idx = band_n - 1
         except (ValueError, IndexError):
             return
@@ -785,13 +952,14 @@ class _AdvancedSection(QWidget):
         if q_lbl:
             q_lbl.setText(self._fmt_q(idx))
         q_sl = self._q_sls[idx]
-        if q_sl and name.endswith('_q'):
+        if q_sl and name.endswith("_q"):
             self._block = True
             q_sl.setValue(value)
             self._block = False
 
 
 # ── Public EQ widget ──────────────────────────────────────────────────────────
+
 
 class EqWidget(QWidget):
     """
@@ -810,7 +978,7 @@ class EqWidget(QWidget):
     def __init__(
         self,
         prefix: str,
-        bridge: "BridgeCast",
+        bridge: BridgeCast,
         title: str = "EQ",
         parent: QWidget | None = None,
     ) -> None:
@@ -827,8 +995,7 @@ class EqWidget(QWidget):
         hdr.setContentsMargins(0, 0, 0, 8)
         title_lbl = QLabel(title)
         title_lbl.setStyleSheet(
-            "font-size: 13px; font-weight: 600; color: #e8e8ea;"
-            " background-color: transparent;"
+            "font-size: 13px; font-weight: 600; color: #e8e8ea; background-color: transparent;"
         )
         hdr.addWidget(title_lbl)
         hdr.addStretch()
@@ -890,7 +1057,7 @@ class EqWidget(QWidget):
         self._canvas.clear_spectrum()
 
     def showEvent(self, event) -> None:
-        self._start_capture()        # always-on while the panel is visible
+        self._start_capture()  # always-on while the panel is visible
         super().showEvent(event)
 
     def hideEvent(self, event) -> None:

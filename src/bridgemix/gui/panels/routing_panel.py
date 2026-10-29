@@ -9,11 +9,13 @@ re-applied automatically by RoutingMonitor as apps come and go.
 The panel is independent of the MIDI connection — audio routing works whether or
 not the Bridge Cast is "Connected" for device control.
 """
+
 from __future__ import annotations
 
 import os
+from collections.abc import Callable
 from pathlib import Path
-from typing import TYPE_CHECKING, Callable
+from typing import TYPE_CHECKING
 
 from PyQt6.QtCore import (
     QEasingCurve,
@@ -46,8 +48,8 @@ if TYPE_CHECKING:
     from bridgemix.routing.monitor import RoutingMonitor
 
 _PANEL_WIDTH = 268
-_NO_TARGET = "Default"   # combo entry (italic): don't route to a Bridge Cast channel
-_UNSET = object()        # sentinel: combo not yet built for any sink
+_NO_TARGET = "Default"  # combo entry (italic): don't route to a Bridge Cast channel
+_UNSET = object()  # sentinel: combo not yet built for any sink
 _ICON_SIZE = 18
 _FALLBACK_ICON = "application-x-executable"
 
@@ -97,9 +99,12 @@ def _desktop_dirs() -> list[Path]:
     """XDG application directories plus Flatpak export dirs, de-duplicated."""
     data_home = os.environ.get("XDG_DATA_HOME") or os.path.expanduser("~/.local/share")
     data_dirs = os.environ.get("XDG_DATA_DIRS") or "/usr/local/share:/usr/share"
-    bases = [data_home, *data_dirs.split(":"),
-             os.path.expanduser("~/.local/share/flatpak/exports/share"),
-             "/var/lib/flatpak/exports/share"]
+    bases = [
+        data_home,
+        *data_dirs.split(":"),
+        os.path.expanduser("~/.local/share/flatpak/exports/share"),
+        "/var/lib/flatpak/exports/share",
+    ]
     out: list[Path] = []
     for base in bases:
         path = Path(base) / "applications"
@@ -123,10 +128,14 @@ def _ensure_icon_search_paths() -> None:
     if _icon_paths_ready:
         return
     _icon_paths_ready = True
-    extra = [p for p in (
-        os.path.expanduser("~/.local/share/flatpak/exports/share/icons"),
-        "/var/lib/flatpak/exports/share/icons",
-    ) if os.path.isdir(p)]
+    extra = [
+        p
+        for p in (
+            os.path.expanduser("~/.local/share/flatpak/exports/share/icons"),
+            "/var/lib/flatpak/exports/share/icons",
+        )
+        if os.path.isdir(p)
+    ]
     if extra:
         QIcon.setThemeSearchPaths(list(dict.fromkeys(QIcon.themeSearchPaths() + extra)))
 
@@ -141,7 +150,7 @@ def _icon_index() -> dict[str, str]:
     return _icon_index_cache
 
 
-def _app_icon(stream: "Stream") -> QIcon:
+def _app_icon(stream: Stream) -> QIcon:
     """Best themed icon for a stream.
 
     Tries, in order: the PulseAudio icon-name hint; the icon mapped from a
@@ -167,8 +176,12 @@ class _StreamRow(QWidget):
     """One application: name + a target dropdown, bound to a routing rule."""
 
     def __init__(
-        self, stream: "Stream", targets: list["Target"], monitor: "RoutingMonitor",
-        on_changed: Callable[[], None], parent: QWidget | None = None,
+        self,
+        stream: Stream,
+        targets: list[Target],
+        monitor: RoutingMonitor,
+        on_changed: Callable[[], None],
+        parent: QWidget | None = None,
     ) -> None:
         super().__init__(parent)
         self._stream = stream
@@ -176,7 +189,7 @@ class _StreamRow(QWidget):
         self._monitor = monitor
         self._on_changed = on_changed
         self._block = False
-        self._combo_sink: str | None | object = _UNSET   # what the combo was last built for
+        self._combo_sink: str | None | object = _UNSET  # what the combo was last built for
 
         row = QHBoxLayout(self)
         row.setContentsMargins(0, 0, 0, 0)
@@ -201,12 +214,12 @@ class _StreamRow(QWidget):
         self._populate_combo()
         row.addWidget(self._combo)
 
-    def update_stream(self, stream: "Stream") -> None:
+    def update_stream(self, stream: Stream) -> None:
         """Refresh in place (same app, possibly moved/renamed) without a write-back."""
         self._stream = stream
         self._refresh_appearance()
         if stream.sink_name != self._combo_sink:
-            self._populate_combo()   # only rebuild when the routed sink changed
+            self._populate_combo()  # only rebuild when the routed sink changed
 
     def _refresh_appearance(self) -> None:
         self._icon.setPixmap(_app_icon(self._stream).pixmap(QSize(_ICON_SIZE, _ICON_SIZE)))
@@ -226,7 +239,7 @@ class _StreamRow(QWidget):
             self._combo.addItem(_NO_TARGET, None)
             italic = QFont(self._combo.font())
             italic.setItalic(True)
-            self._combo.setItemData(0, italic, Qt.ItemDataRole.FontRole)   # italic in the list
+            self._combo.setItemData(0, italic, Qt.ItemDataRole.FontRole)  # italic in the list
         for t in self._targets:
             self._combo.addItem(t.label, t.sink_name)
         idx = self._combo.findData(self._stream.sink_name)
@@ -248,12 +261,12 @@ class _StreamRow(QWidget):
         sink = self._combo.currentData()
         key = self._stream.app_key
         if sink is None:
-            store.remove_rule(key)          # stop auto-routing this app
+            store.remove_rule(key)  # stop auto-routing this app
         else:
             store.set_rule(key, sink)
             backend.move(self._stream.index, sink)
             self._monitor.note_manual(self._stream.index)
-        self._on_changed()   # ask the panel to regroup this app under its new channel
+        self._on_changed()  # ask the panel to regroup this app under its new channel
 
 
 class _CollapseStrip(QWidget):
@@ -268,7 +281,7 @@ class _CollapseStrip(QWidget):
     clicked = pyqtSignal()
 
     _WIDTH = 26
-    _ARROW_BAND = 20   # px height of a chevron's draw band
+    _ARROW_BAND = 20  # px height of a chevron's draw band
     _ARROW_INSET = 14  # gap from each end to the chevron band (pulls them inward)
 
     def __init__(self, parent: QWidget | None = None) -> None:
@@ -302,25 +315,25 @@ class _CollapseStrip(QWidget):
         w, h = self.width(), self.height()
 
         if self._hover:
-            bg = theme.SURFACE_4   # subtle lighter-grey wash across the whole bar
+            bg = theme.SURFACE_4  # subtle lighter-grey wash across the whole bar
         else:
             bg = theme.SURFACE if self._expanded else theme.SURFACE_2
         p.fillRect(self.rect(), QColor(bg))
 
         accent = theme.Q_ACCENT_HOVER if self._hover else theme.Q_ACCENT
-        chevron = "❮" if self._expanded else "❯"   # left when open, right when collapsed
+        chevron = "❮" if self._expanded else "❯"  # left when open, right when collapsed
 
         # Rotated label, clear of the chevron bands at top/bottom.
         p.save()
         p.translate(w / 2.0, h / 2.0)
-        p.rotate(-90)   # reads bottom-to-top
+        p.rotate(-90)  # reads bottom-to-top
         font = p.font()
         font.setPointSizeF(9.5)
         font.setBold(True)
         p.setFont(font)
         p.setPen(accent)
         band = self._ARROW_BAND
-        margin = self._ARROW_INSET + band   # keep the label clear of the inset chevrons
+        margin = self._ARROW_INSET + band  # keep the label clear of the inset chevrons
         label_rect = QRectF(-h / 2.0 + margin, -w / 2.0, h - 2 * margin, w)
         p.drawText(label_rect, Qt.AlignmentFlag.AlignCenter, "App Audio Routing")
         p.restore()
@@ -338,14 +351,14 @@ class _CollapseStrip(QWidget):
 
 
 class RoutingPanel(QWidget):
-    expandedChanged = pyqtSignal(bool)   # emitted when the panel opens / closes
+    expandedChanged = pyqtSignal(bool)  # emitted when the panel opens / closes
 
-    def __init__(self, monitor: "RoutingMonitor", parent: QWidget | None = None) -> None:
+    def __init__(self, monitor: RoutingMonitor, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         _ensure_icon_search_paths()
         self._expanded = False
         self._monitor = monitor
-        self._targets: list["Target"] = backend.list_targets()
+        self._targets: list[Target] = backend.list_targets()
         self._rows: dict[int, _StreamRow] = {}
         self._headers: list[QWidget] = []
         self._render_sig: tuple | None = None
@@ -362,7 +375,7 @@ class RoutingPanel(QWidget):
         self._anim.setEasingCurve(QEasingCurve.Type.InOutCubic)
         self._anim.finished.connect(self._on_anim_finished)
 
-        self._body.setVisible(False)   # start collapsed
+        self._body.setVisible(False)  # start collapsed
         monitor.streams_changed.connect(self._on_streams)
 
         # Collapse when the user clicks anywhere outside the panel.
@@ -389,9 +402,9 @@ class RoutingPanel(QWidget):
         self._anim.stop()
         if expanded:
             if not self._targets:
-                self._targets = backend.list_targets()   # device may have appeared
+                self._targets = backend.list_targets()  # device may have appeared
             self._body.setVisible(True)
-            self._on_streams(backend.list_streams())     # build rows before sliding in
+            self._on_streams(backend.list_streams())  # build rows before sliding in
             self._anim.setStartValue(self._body.maximumWidth())
             self._anim.setEndValue(_PANEL_WIDTH)
         else:
@@ -401,7 +414,7 @@ class RoutingPanel(QWidget):
 
     def _on_anim_finished(self) -> None:
         if not self._expanded:
-            self._body.setVisible(False)   # fully collapsed → drop from layout
+            self._body.setVisible(False)  # fully collapsed → drop from layout
 
     def eventFilter(self, obj: object, event: QEvent) -> bool:
         """Collapse the panel on a mouse press outside it (click-away to dismiss).
@@ -431,7 +444,7 @@ class RoutingPanel(QWidget):
         # content into / out of view without reflowing any labels or combos.
         body = QFrame()
         body.setMinimumWidth(0)
-        body.setMaximumWidth(0)   # start collapsed; width is driven by the animation
+        body.setMaximumWidth(0)  # start collapsed; width is driven by the animation
         clip = QHBoxLayout(body)
         clip.setContentsMargins(0, 0, 0, 0)
         clip.setSpacing(0)
@@ -511,14 +524,14 @@ class RoutingPanel(QWidget):
 
     def _on_streams(self, streams: list) -> None:
         if not self._expanded:
-            return   # don't churn the UI while collapsed; rebuilt when reopened
+            return  # don't churn the UI while collapsed; rebuilt when reopened
         if not self._targets:
             self._targets = backend.list_targets()
 
         grouped = self._grouped(streams)
         sig = tuple((key, tuple(s.index for s in group)) for key, group in grouped)
         if sig == self._render_sig:
-            for _key, group in grouped:          # layout unchanged → update in place
+            for _key, group in grouped:  # layout unchanged → update in place
                 for s in group:
                     self._rows[s.index].update_stream(s)
             return
@@ -527,10 +540,10 @@ class RoutingPanel(QWidget):
 
     def _render(self, grouped: list[tuple], streams: list) -> None:
         present = {s.index for s in streams}
-        for idx in list(self._rows):                 # drop rows for gone streams
+        for idx in list(self._rows):  # drop rows for gone streams
             if idx not in present:
                 self._rows.pop(idx).deleteLater()
-        for s in streams:                            # reuse rows; create the new ones
+        for s in streams:  # reuse rows; create the new ones
             if s.index in self._rows:
                 self._rows[s.index].update_stream(s)
             else:
@@ -557,7 +570,7 @@ class RoutingPanel(QWidget):
             widget = self._list_lay.takeAt(0).widget()
             if widget in self._headers:
                 widget.deleteLater()
-            elif widget is not None:                 # _empty or a reused _StreamRow
+            elif widget is not None:  # _empty or a reused _StreamRow
                 widget.setParent(None)
         self._headers.clear()
 

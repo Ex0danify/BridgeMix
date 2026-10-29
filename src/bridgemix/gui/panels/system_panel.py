@@ -2,6 +2,7 @@
 System panel — LED brightness (own group) and Phones gain / Indicator type /
 Mute display dropdowns (own group).
 """
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
@@ -28,7 +29,7 @@ _BRIGHTNESS_POWER_LIMIT = 3
 
 
 class SystemPanel(QWidget):
-    def __init__(self, bridge: "BridgeCast", parent: QWidget | None = None) -> None:
+    def __init__(self, bridge: BridgeCast, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self._bridge = bridge
         layout = QVBoxLayout(self)
@@ -48,24 +49,29 @@ class SystemPanel(QWidget):
         lay.setContentsMargins(10, 6, 10, 10)
         lay.setSpacing(6)
 
-        lay.addWidget(LabeledSlider(
-            "", "led_brightness", self._bridge, 0, 7, str,
-            limit=_BRIGHTNESS_POWER_LIMIT,
-            limit_tooltip=(
-                "Levels above 3 require additional bus power; without it the "
-                "device caps brightness at 3."
-            ),
-            value_width=18,   # single-digit level — keep it tucked against the slider
-        ))
+        lay.addWidget(
+            LabeledSlider(
+                "",
+                "led_brightness",
+                self._bridge,
+                0,
+                7,
+                str,
+                limit=_BRIGHTNESS_POWER_LIMIT,
+                limit_tooltip=(
+                    "Levels above 3 require additional bus power; without it the "
+                    "device caps brightness at 3."
+                ),
+                value_width=18,  # single-digit level — keep it tucked against the slider
+            )
+        )
 
         hint = QLabel(
             "Brightness above Level 3 requires additional power and is "
             "otherwise ignored by the device."
         )
         hint.setWordWrap(True)
-        hint.setStyleSheet(
-            "font-size: 12px; color: #9a9aa2; background-color: transparent;"
-        )
+        hint.setStyleSheet("font-size: 12px; color: #9a9aa2; background-color: transparent;")
         lay.addWidget(hint)
         return grp
 
@@ -80,9 +86,7 @@ class SystemPanel(QWidget):
         self._phones_combo = ScrollGuardComboBox()
         self._phones_combo.addItems(["Normal", "Boost 1", "Boost 2"])
         self._phones_combo.setCurrentIndex(b.get_parameter("phones_gain"))
-        self._phones_combo.currentIndexChanged.connect(
-            lambda i: b.set_parameter("phones_gain", i)
-        )
+        self._phones_combo.currentIndexChanged.connect(lambda i: b.set_parameter("phones_gain", i))
         form.addRow("Phones Gain:", self._phones_combo)
 
         self._indicator_combo = ScrollGuardComboBox()
@@ -116,9 +120,7 @@ class SystemPanel(QWidget):
             "colours and hot keys — to factory defaults. This cannot be undone."
         )
         hint.setWordWrap(True)
-        hint.setStyleSheet(
-            "font-size: 12px; color: #9a9aa2; background-color: transparent;"
-        )
+        hint.setStyleSheet("font-size: 12px; color: #9a9aa2; background-color: transparent;")
         lay.addWidget(hint)
 
         self._reset_btn = QPushButton("Reset to Factory Defaults")

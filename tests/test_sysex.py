@@ -1,10 +1,11 @@
 """Tests for the pure SysEx frame builder/parser (``bridgemix.midi.sysex``)."""
+
 from __future__ import annotations
 
 from bridgemix.midi import sysex
 
-
 # ── Checksum ──────────────────────────────────────────────────────────────────
+
 
 def test_roland_checksum_zero_sum():
     assert sysex._roland_checksum([0, 0, 0]) == 0
@@ -19,11 +20,12 @@ def test_roland_checksum_makes_total_divisible_by_128():
 
 # ── build_write ───────────────────────────────────────────────────────────────
 
+
 def test_build_write_length_and_framing():
     frame = sysex.build_write(0x03, 0x07, 0x10, 0x00, 0x40)
     assert len(frame) == 15
     assert frame[:7] == (0x41, 0x10, 0x00, 0x00, 0x00, 0x00, 0x11)
-    assert frame[7] == 0x12          # DT1
+    assert frame[7] == 0x12  # DT1
     assert frame[8] == sysex._SUBMODEL
     assert frame[9:14] == (0x03, 0x07, 0x10, 0x00, 0x40)
 
@@ -43,6 +45,7 @@ def test_build_write_all_byte_values_are_7bit_or_header():
 
 # ── build_write_pair ──────────────────────────────────────────────────────────
 
+
 def test_build_write_pair_layout_and_checksum():
     frame = sysex.build_write_pair(0x03, 0x00, 0x00, 0x61, 0x4D, 0x00)
     assert len(frame) == 16
@@ -53,14 +56,15 @@ def test_build_write_pair_layout_and_checksum():
 
 # ── build_read ────────────────────────────────────────────────────────────────
 
+
 def test_build_read_length_and_framing():
     frame = sysex.build_read(0x02, 0x00, 0x00, 0x00, 0x12)
     assert len(frame) == 17
-    assert frame[7] == 0x11          # RQ1
+    assert frame[7] == 0x11  # RQ1
     assert frame[8] == sysex._SUBMODEL
     assert frame[9:13] == (0x02, 0x00, 0x00, 0x00)
     assert frame[13:15] == (0x00, 0x00)  # padding
-    assert frame[15] == 0x12         # size
+    assert frame[15] == 0x12  # size
 
 
 def test_build_read_checksum_valid():
@@ -78,6 +82,7 @@ def test_build_heartbeat_rq1_targets_status_section():
 
 # ── Identity ──────────────────────────────────────────────────────────────────
 
+
 def test_build_identity_request():
     assert sysex.build_identity_request() == (0x7E, 0x7F, 0x06, 0x01)
 
@@ -88,7 +93,7 @@ def test_parse_identity_reply_valid():
     info = sysex.parse_identity_reply(data)
     assert info is not None
     assert info["manufacturer"] == 0x41
-    assert info["family"] == (0x01 << 7) | 0x02   # msb<<7 | lsb
+    assert info["family"] == (0x01 << 7) | 0x02  # msb<<7 | lsb
     assert info["member"] == (0x03 << 7) | 0x04
     assert info["firmware"] == (0x01, 0x00, 0x00, 0x00)
 
@@ -103,6 +108,7 @@ def test_parse_identity_reply_wrong_subids():
 
 
 # ── parse ─────────────────────────────────────────────────────────────────────
+
 
 def test_parse_single_value_round_trip():
     frame = sysex.build_write(0x03, 0x07, 0x10, 0x00, 0x40)
@@ -120,14 +126,30 @@ def test_parse_single_value_round_trip():
 
 def test_parse_bulk_frame_extracts_payload():
     # 15-byte header region + extra payload bytes before the final checksum.
-    data = (0x41, 0x10, 0x00, 0x00, 0x00, 0x00, 0x11,
-            0x12, 0x7F, 0x03, 0x07, 0x00, 0x00,
-            0x11, 0x22, 0x33, 0x44,   # payload
-            0x00)                      # checksum (not validated by parse)
+    data = (
+        0x41,
+        0x10,
+        0x00,
+        0x00,
+        0x00,
+        0x00,
+        0x11,
+        0x12,
+        0x7F,
+        0x03,
+        0x07,
+        0x00,
+        0x00,
+        0x11,
+        0x22,
+        0x33,
+        0x44,  # payload
+        0x00,
+    )  # checksum (not validated by parse)
     parsed = sysex.parse(data)
     assert parsed is not None
     assert parsed["payload"] == (0x11, 0x22, 0x33, 0x44)
-    assert parsed["value"] == 0x11    # convenience: first payload byte
+    assert parsed["value"] == 0x11  # convenience: first payload byte
 
 
 def test_parse_rejects_too_short():

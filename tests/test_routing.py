@@ -3,6 +3,7 @@
 Fixtures mirror real `pactl --format=json` output from a Bridge Cast V2, so the
 suite stays hardware-free (no audio server required).
 """
+
 from __future__ import annotations
 
 import json
@@ -13,38 +14,68 @@ from bridgemix.routing import backend, store
 
 # ── canned `pactl --format=json list sinks` (trimmed to relevant fields) ──────
 _SINKS = [
-    {"index": 3679,
-     "name": "alsa_output.usb-Roland_BRIDGE_CAST_V2_5C00-01.HiFi__Line1__sink",
-     "properties": {"device.description": "BRIDGE CAST V2",
-                    "device.profile.description": "Chat L/R"}},
-    {"index": 3681,
-     "name": "alsa_output.usb-Roland_BRIDGE_CAST_V2_5C00-01.HiFi__Line2__sink",
-     "properties": {"device.description": "BRIDGE CAST V2",
-                    "device.profile.description": "Game L/R"}},
-    {"index": 3683,
-     "name": "alsa_output.usb-Roland_BRIDGE_CAST_V2_5C00-01.HiFi__Line3__sink",
-     "properties": {"device.description": "BRIDGE CAST V2",
-                    "device.profile.description": "Music L/R"}},
-    {"index": 3685,
-     "name": "alsa_output.usb-Roland_BRIDGE_CAST_V2_5C00-01.HiFi__Line4__sink",
-     "properties": {"device.description": "BRIDGE CAST V2",
-                    "device.profile.description": "System L/R"}},
-    {"index": 3802,
-     "name": "alsa_output.pci-0000_43_00.1.hdmi-stereo",
-     "properties": {"device.description": "GA102 HD Audio",
-                    "device.profile.description": "Digital Stereo (HDMI)"}},
+    {
+        "index": 3679,
+        "name": "alsa_output.usb-Roland_BRIDGE_CAST_V2_5C00-01.HiFi__Line1__sink",
+        "properties": {
+            "device.description": "BRIDGE CAST V2",
+            "device.profile.description": "Chat L/R",
+        },
+    },
+    {
+        "index": 3681,
+        "name": "alsa_output.usb-Roland_BRIDGE_CAST_V2_5C00-01.HiFi__Line2__sink",
+        "properties": {
+            "device.description": "BRIDGE CAST V2",
+            "device.profile.description": "Game L/R",
+        },
+    },
+    {
+        "index": 3683,
+        "name": "alsa_output.usb-Roland_BRIDGE_CAST_V2_5C00-01.HiFi__Line3__sink",
+        "properties": {
+            "device.description": "BRIDGE CAST V2",
+            "device.profile.description": "Music L/R",
+        },
+    },
+    {
+        "index": 3685,
+        "name": "alsa_output.usb-Roland_BRIDGE_CAST_V2_5C00-01.HiFi__Line4__sink",
+        "properties": {
+            "device.description": "BRIDGE CAST V2",
+            "device.profile.description": "System L/R",
+        },
+    },
+    {
+        "index": 3802,
+        "name": "alsa_output.pci-0000_43_00.1.hdmi-stereo",
+        "properties": {
+            "device.description": "GA102 HD Audio",
+            "device.profile.description": "Digital Stereo (HDMI)",
+        },
+    },
 ]
 
 _SINK_INPUTS = [
-    {"index": 1955, "sink": 3685,
-     "properties": {"application.name": "Zen", "application.process.binary": "zen",
-                    "media.name": "How To Crosspost on Reddit - YouTube"}},
-    {"index": 3355, "sink": 3681,
-     "properties": {"application.name": "Discord", "media.name": "Voice"}},
+    {
+        "index": 1955,
+        "sink": 3685,
+        "properties": {
+            "application.name": "Zen",
+            "application.process.binary": "zen",
+            "media.name": "How To Crosspost on Reddit - YouTube",
+        },
+    },
+    {
+        "index": 3355,
+        "sink": 3681,
+        "properties": {"application.name": "Discord", "media.name": "Voice"},
+    },
 ]
 
 
 # ── parse_targets ─────────────────────────────────────────────────────────────
+
 
 def test_parse_targets_filters_to_bridge_cast_only():
     targets = backend.parse_targets(_SINKS)
@@ -70,29 +101,31 @@ def test_parse_targets_empty_when_no_device():
 
 # ── parse_streams ─────────────────────────────────────────────────────────────
 
+
 def test_parse_streams_resolves_sink_name_and_key():
     name_by_index = {s["index"]: s["name"] for s in _SINKS}
     streams = backend.parse_streams(_SINK_INPUTS, name_by_index)
 
     zen = streams[0]
-    assert zen.app_key == "zen"              # prefers process.binary
+    assert zen.app_key == "zen"  # prefers process.binary
     assert zen.label == "Zen"
-    assert zen.sink_name.endswith("HiFi__Line4__sink")   # index 3685 → System
+    assert zen.sink_name.endswith("HiFi__Line4__sink")  # index 3685 → System
 
 
 def test_parse_streams_falls_back_to_app_name_when_no_binary():
     name_by_index = {s["index"]: s["name"] for s in _SINKS}
     discord = backend.parse_streams(_SINK_INPUTS, name_by_index)[1]
-    assert discord.app_key == "Discord"      # no process.binary → app name
+    assert discord.app_key == "Discord"  # no process.binary → app name
 
 
 def test_parse_streams_unknown_sink_index_is_none():
-    streams = backend.parse_streams(_SINK_INPUTS, {})   # no name mapping
+    streams = backend.parse_streams(_SINK_INPUTS, {})  # no name mapping
     assert all(s.sink_name is None for s in streams)
 
 
 def test_desktop_entry_parser_main_group_only():
     from bridgemix.gui.panels.routing_panel import _parse_desktop_entry
+
     text = (
         "[Desktop Entry]\n"
         "Name=Zen Browser\n"
@@ -107,22 +140,23 @@ def test_desktop_entry_parser_main_group_only():
 
 def test_icon_index_maps_binary_and_stem(tmp_path):
     from bridgemix.gui.panels.routing_panel import _build_icon_index
+
     (tmp_path / "app.zen_browser.zen.desktop").write_text(
         "[Desktop Entry]\nIcon=app.zen_browser.zen\nStartupWMClass=zen\n"
     )
     (tmp_path / "noicon.desktop").write_text("[Desktop Entry]\nName=Nope\n")
     index = _build_icon_index([tmp_path])
-    assert index["zen"] == "app.zen_browser.zen"                  # by StartupWMClass
+    assert index["zen"] == "app.zen_browser.zen"  # by StartupWMClass
     assert index["app.zen_browser.zen"] == "app.zen_browser.zen"  # by filename stem
-    assert "noicon" not in index                                   # entries w/o Icon skipped
+    assert "noicon" not in index  # entries w/o Icon skipped
 
 
 @pytest.mark.parametrize(
     "platform, has_pactl, expected",
     [
-        ("linux", True, True),    # Linux with pactl → routing available
+        ("linux", True, True),  # Linux with pactl → routing available
         ("linux", False, False),  # Linux without pactl → nothing to drive
-        ("win32", True, False),   # Windows uses its own audio APIs → hidden
+        ("win32", True, False),  # Windows uses its own audio APIs → hidden
         ("win32", False, False),
         ("darwin", True, False),  # macOS likewise
     ],
@@ -152,7 +186,9 @@ def test_row_offers_default_only_when_unrouted(qapp):
     assert unrouted._combo.currentData() is None
 
     # Already on a Bridge Cast channel → no Default, channel preselected.
-    routed = _StreamRow(Stream(2, "spotify", "Spotify", "", "sink_chat", ""), targets, monitor, noop)
+    routed = _StreamRow(
+        Stream(2, "spotify", "Spotify", "", "sink_chat", ""), targets, monitor, noop
+    )
     assert None not in datas(routed._combo)
     assert routed._combo.currentData() == "sink_chat"
 
@@ -172,10 +208,10 @@ def test_grouping_orders_default_first_then_channels(qapp):
     panel._targets = [Target("sink_chat", "Chat", 1), Target("sink_game", "Game", 2)]
 
     streams = [
-        Stream(1, "zen", "Zen", "", "other_sink", ""),        # unrouted → Default
+        Stream(1, "zen", "Zen", "", "other_sink", ""),  # unrouted → Default
         Stream(2, "spotify", "Spotify", "", "sink_game", ""),  # Game
         Stream(3, "discord", "Discord", "", "sink_chat", ""),  # Chat
-        Stream(4, "aaa", "AAA", "", "sink_chat", ""),          # Chat, sorts first
+        Stream(4, "aaa", "AAA", "", "sink_chat", ""),  # Chat, sorts first
     ]
     grouped = panel._grouped(streams)
 
@@ -188,14 +224,15 @@ def test_grouping_orders_default_first_then_channels(qapp):
 def test_panel_contains_distinguishes_inside_from_outside(qapp):
     """Click-away dismissal: panel descendants are 'inside', everything else out."""
     from PyQt6.QtWidgets import QLabel
+
     from bridgemix.gui.panels.routing_panel import RoutingPanel
     from bridgemix.routing.monitor import RoutingMonitor
 
     monitor = RoutingMonitor()
     panel = RoutingPanel(monitor)
 
-    inside_child = panel._body            # a descendant widget of the panel
-    outside = QLabel()                    # unrelated top-level widget
+    inside_child = panel._body  # a descendant widget of the panel
+    outside = QLabel()  # unrelated top-level widget
 
     assert panel._contains(panel) is True
     assert panel._contains(inside_child) is True
@@ -207,11 +244,19 @@ def test_panel_contains_distinguishes_inside_from_outside(qapp):
 
 def test_parse_streams_icon_name_captured_else_empty():
     si = [
-        {"index": 1, "sink": 3683,
-         "properties": {"application.process.binary": "spotify",
-                        "application.icon_name": "com.spotify.Client"}},
-        {"index": 2, "sink": 3683,
-         "properties": {"application.process.binary": "zen"}},   # no icon hint
+        {
+            "index": 1,
+            "sink": 3683,
+            "properties": {
+                "application.process.binary": "spotify",
+                "application.icon_name": "com.spotify.Client",
+            },
+        },
+        {
+            "index": 2,
+            "sink": 3683,
+            "properties": {"application.process.binary": "zen"},
+        },  # no icon hint
     ]
     spotify, zen = backend.parse_streams(si, {})
     assert spotify.icon == "com.spotify.Client"
@@ -219,6 +264,7 @@ def test_parse_streams_icon_name_captured_else_empty():
 
 
 # ── store round-trip ──────────────────────────────────────────────────────────
+
 
 @pytest.fixture
 def tmp_routing(tmp_path, monkeypatch):

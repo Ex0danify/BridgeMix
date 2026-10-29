@@ -1,9 +1,10 @@
-﻿"""
+"""
 JSON preset save / load for BridgeCast parameters.
 
 Only writable parameters from REGISTRY are saved/loaded.
 Read-only parameters (hardware monitors) are excluded.
 """
+
 from __future__ import annotations
 
 import json

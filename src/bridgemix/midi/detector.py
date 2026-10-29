@@ -5,11 +5,12 @@ Roland's Windows driver exposes:
   Output: "BRIDGE CAST APP 1", "BRIDGE CAST CTRL 2"
   Input:  "BRIDGE CAST APP 0", "BRIDGE CAST CTRL 1"
 """
+
 from __future__ import annotations
 
 import mido
 
-_KEYWORD = "BRIDGE CAST"      # case-insensitive match against all port names
+_KEYWORD = "BRIDGE CAST"  # case-insensitive match against all port names
 
 
 def _best_port(names: list[str]) -> str | None:

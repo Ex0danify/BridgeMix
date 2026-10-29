@@ -1,4 +1,5 @@
 """Tests for JSON preset save/load (``bridgemix.preset.manager``)."""
+
 from __future__ import annotations
 
 import json

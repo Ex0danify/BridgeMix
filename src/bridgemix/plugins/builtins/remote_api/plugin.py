@@ -4,6 +4,7 @@ create_widget builds the server on the context's DeviceFacade, restores the save
 enabled state from the SDK settings store and returns the card; shutdown stops the
 server.
 """
+
 from __future__ import annotations
 
 from PyQt6.QtWidgets import QWidget

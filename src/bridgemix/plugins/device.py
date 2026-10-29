@@ -14,10 +14,12 @@ reports connectivity and must answer even when nothing is connected.
 
 It does not expose the raw BridgeCast, so internal refactors don't break plugins.
 """
+
 from __future__ import annotations
 
+from collections.abc import Callable
 from concurrent.futures import Future
-from typing import Any, Callable
+from typing import Any
 
 from PyQt6.QtCore import QObject, Qt, pyqtSignal, pyqtSlot
 
@@ -52,9 +54,9 @@ class DeviceFacade(QObject):
     # Forwarded device signals — safe for a plugin to connect to from its own
     # thread (Qt delivers across threads via queued connections). These mirror
     # the subset of BridgeCast signals plugins are most likely to need.
-    connected = pyqtSignal(bool)                 # device connected / disconnected
-    parameter_changed = pyqtSignal(str, int)     # name, value
-    device_info_updated = pyqtSignal(str, str)   # model_name, firmware_version
+    connected = pyqtSignal(bool)  # device connected / disconnected
+    parameter_changed = pyqtSignal(str, int)  # name, value
+    device_info_updated = pyqtSignal(str, str)  # model_name, firmware_version
 
     # Carries (thunk, future); connected to _run with a queued connection, so the
     # slot always executes on this object's (GUI) thread.
@@ -104,10 +106,12 @@ class DeviceFacade(QObject):
         with the access, so it can't race a disconnect. Raises
         :class:`DeviceNotConnected`.
         """
+
         def _guarded() -> Any:
             if not self._bridge.is_connected:
                 raise DeviceNotConnected()
             return thunk()
+
         return self.call(_guarded)
 
     def _on_device_info(self, model: str, firmware: str) -> None:
@@ -123,12 +127,14 @@ class DeviceFacade(QObject):
                 "model": info[0] if info else None,
                 "firmware": info[1] if info else None,
             }
+
         return self.call(_read)
 
     def list_parameters(self) -> list[dict[str, Any]]:
         def _read() -> list[dict[str, Any]]:
             state = self._bridge.state
             return [_describe(name, state.get(name)) for name in REGISTRY]
+
         return self._device_call(_read)
 
     def get_parameter(self, name: str) -> dict[str, Any]:
@@ -138,6 +144,7 @@ class DeviceFacade(QObject):
 
         def _read() -> dict[str, Any]:
             return _describe(name, self._bridge.state.get(name))
+
         return self._device_call(_read)
 
     def set_parameter(self, name: str, value: int) -> dict[str, Any]:
@@ -154,6 +161,7 @@ class DeviceFacade(QObject):
         def _write() -> dict[str, Any]:
             self._bridge.set_parameter(name, value)
             return _describe(name, self._bridge.state.get(name))
+
         return self._device_call(_write)
 
     def state(self) -> dict[str, int]:

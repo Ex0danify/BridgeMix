@@ -5,6 +5,7 @@ Runs uvicorn in a background thread and exposes start/stop plus a Qt signal so
 the System panel can reflect state. ``fastapi``/``uvicorn`` are imported lazily
 inside :meth:`ApiServer.start`, so importing this module never pulls them in.
 """
+
 from __future__ import annotations
 
 import logging
@@ -26,6 +27,7 @@ _STARTUP_TIMEOUT_S = 3.0
 def dependencies_available() -> bool:
     """True if the optional REST API dependencies can be imported."""
     import importlib.util
+
     return (
         importlib.util.find_spec("fastapi") is not None
         and importlib.util.find_spec("uvicorn") is not None
@@ -42,7 +44,7 @@ class ApiServer(QObject):
     def __init__(self, gateway: DeviceFacade, parent: QObject | None = None) -> None:
         super().__init__(parent)
         self._gateway = gateway
-        self._server = None          # uvicorn.Server while running
+        self._server = None  # uvicorn.Server while running
         self._thread: threading.Thread | None = None
         self._error: BaseException | None = None
         self._host = ""
@@ -90,9 +92,7 @@ class ApiServer(QObject):
         # the main thread.
         self._server.install_signal_handlers = lambda: None
 
-        self._thread = threading.Thread(
-            target=self._serve, name="bridgemix-api", daemon=True
-        )
+        self._thread = threading.Thread(target=self._serve, name="bridgemix-api", daemon=True)
         self._thread.start()
 
         # Wait for uvicorn to either come up (server.started) or fail to bind.

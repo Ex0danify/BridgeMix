@@ -5,6 +5,7 @@ dict-backed settings store, so every server branch — running, stopped,
 failed-start, port debounce — and the persistence wiring are covered without a
 network or the filesystem.
 """
+
 from __future__ import annotations
 
 import logging
@@ -65,8 +66,11 @@ class FakeStore:
 def _ctx(store):
     # Minimal PluginContext stand-in: PluginWidget only reads device/settings/log.
     return SimpleNamespace(
-        device=None, settings=store, log=logging.getLogger("test.remote_api"),
-        host_version="1.0.0", plugin_dir=None,
+        device=None,
+        settings=store,
+        log=logging.getLogger("test.remote_api"),
+        host_version="1.0.0",
+        plugin_dir=None,
     )
 
 
@@ -77,6 +81,7 @@ def _make(qapp, *, server=None, store=None):
 
 
 # ── Initial state ─────────────────────────────────────────────────────────────
+
 
 def test_stopped_initial_state(qapp):
     w, _, _ = _make(qapp)
@@ -94,6 +99,7 @@ def test_initial_port_read_from_store(qapp):
 
 
 # ── Transitions ───────────────────────────────────────────────────────────────
+
 
 def test_toggle_on_starts_and_persists(qapp):
     server = FakeApiServer(start_returns=True)
@@ -143,6 +149,7 @@ def test_failed_start_surfaces_error(qapp):
 
 
 # ── Port debounce ─────────────────────────────────────────────────────────────
+
 
 def _start(w, qapp):
     w._api_toggle.setChecked(True)

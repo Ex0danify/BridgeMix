@@ -5,6 +5,7 @@ Subclassing this is **not** required — ``Plugin.create_widget`` may return any
 ``device``/``settings``/``log`` directly) and gives you a ready vertical ``body``
 layout to drop controls into.
 """
+
 from __future__ import annotations
 
 import enum
@@ -31,7 +32,7 @@ class CardWidth(enum.Enum):
 class PluginWidget(QWidget):
     """A QWidget that holds the plugin context and a ready ``body`` layout."""
 
-    def __init__(self, ctx: "PluginContext", parent: QWidget | None = None) -> None:
+    def __init__(self, ctx: PluginContext, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self.ctx = ctx
         # Convenience shortcuts onto the context.

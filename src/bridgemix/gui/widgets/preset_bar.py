@@ -1,6 +1,7 @@
-﻿"""
+"""
 Preset save / load bar — sits at the top of the main window.
 """
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -22,7 +23,7 @@ if TYPE_CHECKING:
 
 
 class PresetBar(QWidget):
-    def __init__(self, bridge: "BridgeCast", parent: QWidget | None = None) -> None:
+    def __init__(self, bridge: BridgeCast, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self._bridge = bridge
         row = QHBoxLayout(self)

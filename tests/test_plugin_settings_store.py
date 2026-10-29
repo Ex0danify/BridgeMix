@@ -1,4 +1,5 @@
 """Tests for the SDK per-plugin settings store (``bridgemix.plugins.settings_store``)."""
+
 from __future__ import annotations
 
 import pytest

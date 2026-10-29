@@ -4,6 +4,7 @@ The pip call is mocked and ``_run`` is invoked directly on the test thread (its
 ``finished`` signal fires synchronously over a direct connection), so no real
 install or event loop is needed.
 """
+
 from __future__ import annotations
 
 import subprocess
@@ -20,6 +21,7 @@ _REQS = ["fastapi>=0.110", "uvicorn>=0.27"]
 
 
 # ── can_install gating ────────────────────────────────────────────────────────
+
 
 def test_can_install_true_in_owned_env(monkeypatch):
     monkeypatch.setattr(inst, "_in_flatpak", lambda: False)
@@ -41,6 +43,7 @@ def test_can_install_false_when_externally_managed(monkeypatch):
 
 # ── missing_requirements ──────────────────────────────────────────────────────
 
+
 def test_missing_requirements_detects_absent_and_present():
     # pytest is certainly installed; a nonsense name certainly is not.
     missing = missing_requirements(["pytest>=1", "no-such-dist-xyz>=9"])
@@ -55,6 +58,7 @@ def test_missing_requirements_is_version_aware():
 
 
 # ── find_conflicts ────────────────────────────────────────────────────────────
+
 
 def test_no_conflict_for_compatible_ranges():
     assert find_conflicts({"a": ["dep>=1.0"], "b": ["dep>=1.2"]}) == []
@@ -88,6 +92,7 @@ def test_conflict_groups_by_canonical_name():
 
 # ── install result signalling ─────────────────────────────────────────────────
 
+
 def _capture(installer: DependencyInstaller) -> list[tuple[bool, str]]:
     out: list[tuple[bool, str]] = []
     installer.finished.connect(lambda ok, msg: out.append((ok, msg)))
@@ -114,9 +119,7 @@ def test_run_success_emits_true(qapp, monkeypatch):
 
 def test_run_failure_surfaces_pip_error(qapp, monkeypatch):
     def fake_run(cmd, **kwargs):
-        return SimpleNamespace(
-            returncode=1, stdout="", stderr="ERROR: could not find a version\n"
-        )
+        return SimpleNamespace(returncode=1, stdout="", stderr="ERROR: could not find a version\n")
 
     monkeypatch.setattr(inst.subprocess, "run", fake_run)
     installer = DependencyInstaller(_REQS)

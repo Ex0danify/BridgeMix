@@ -12,6 +12,7 @@ the UI thread and reports through ``finished(success, message)``; it never
 mutates a dirty tree, and on success the caller prompts the user to restart
 (already-imported modules stay in memory).
 """
+
 from __future__ import annotations
 
 import html
@@ -26,8 +27,8 @@ from PyQt6.QtCore import QObject, pyqtSignal
 
 log = logging.getLogger(__name__)
 
-_GIT_TIMEOUT = 60     # seconds for a single git call
-_PIP_TIMEOUT = 300    # seconds for the dependency re-sync
+_GIT_TIMEOUT = 60  # seconds for a single git call
+_PIP_TIMEOUT = 300  # seconds for the dependency re-sync
 
 
 def repo_root() -> Path | None:
@@ -93,9 +94,7 @@ class SelfUpdater(QObject):
         """Begin the update in a background thread (no-op if already running)."""
         if self.is_running:
             return
-        self._thread = threading.Thread(
-            target=self._run, name="bridgemix-self-update", daemon=True
-        )
+        self._thread = threading.Thread(target=self._run, name="bridgemix-self-update", daemon=True)
         self._thread.start()
 
     def _run(self) -> None:
@@ -107,14 +106,12 @@ class SelfUpdater(QObject):
             self._apply(root)
         except subprocess.TimeoutExpired:
             self.finished.emit(False, "Update timed out.")
-        except OSError as exc:   # git/pip missing or unspawnable — never crash the UI
+        except OSError as exc:  # git/pip missing or unspawnable — never crash the UI
             self.finished.emit(False, f"Could not run the updater: {exc}")
 
     def _apply(self, root: Path) -> None:
         if not is_clean(root):
-            self.finished.emit(
-                False, "You have local changes here — commit or discard them first."
-            )
+            self.finished.emit(False, "You have local changes here — commit or discard them first.")
             return
 
         fetch = _git(root, "fetch", "--tags", "--force", "origin")

@@ -11,6 +11,7 @@ Installing into the running interpreter only works when we own it (a venv or use
 install); inside a Flatpak sandbox or a PEP-668 externally-managed Python it
 won't, so can_install() gates the feature and the card falls back to a hint.
 """
+
 from __future__ import annotations
 
 import importlib
@@ -100,8 +101,8 @@ def missing_requirements(requires: list[str] | tuple[str, ...]) -> list[str]:
 class DependencyConflict:
     """Two or more plugins constrain *dist* in a way no single version satisfies."""
 
-    dist: str                                   # canonical distribution name
-    requirements: tuple[tuple[str, str], ...]   # (plugin_id, requirement_str)
+    dist: str  # canonical distribution name
+    requirements: tuple[tuple[str, str], ...]  # (plugin_id, requirement_str)
 
 
 def find_conflicts(requires_by_plugin: dict[str, list[str]]) -> list[DependencyConflict]:
@@ -127,9 +128,7 @@ def find_conflicts(requires_by_plugin: dict[str, list[str]]) -> list[DependencyC
         for _, req in items:
             combined &= req.specifier
         if not _satisfiable(combined):
-            conflicts.append(
-                DependencyConflict(dist, tuple((pid, str(req)) for pid, req in items))
-            )
+            conflicts.append(DependencyConflict(dist, tuple((pid, str(req)) for pid, req in items)))
     return conflicts
 
 
@@ -191,9 +190,7 @@ class DependencyInstaller(QObject):
         """Start the install in a background thread (no-op if already running)."""
         if self.is_running or not self._requirements:
             return
-        self._thread = threading.Thread(
-            target=self._run, name="bridgemix-plugin-pip", daemon=True
-        )
+        self._thread = threading.Thread(target=self._run, name="bridgemix-plugin-pip", daemon=True)
         self._thread.start()
 
     def _run(self) -> None:

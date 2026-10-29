@@ -1,6 +1,7 @@
 """
 Mic FX panel — Low Cut, De-esser, Noise Suppressor, Compressor, Mic EQ.
 """
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
@@ -20,25 +21,69 @@ from PyQt6.QtWidgets import (
 if TYPE_CHECKING:
     from bridgemix.device.bridge_cast import BridgeCast
 
-from bridgemix.gui.widgets.controls import LabeledSlider, ParamToggle, Slider
+from bridgemix.gui.widgets.controls import LabeledSlider, ParamToggle
 from bridgemix.gui.widgets.eq_widget import EqWidget
-
 
 # ── Value-format helpers ───────────────────────────────────────────────────────
 
 _LOW_CUT_FREQS = [
-    "Flat", "20.0Hz", "25.0Hz", "31.5Hz", "40Hz", "50Hz", "63Hz", "80Hz",
-    "100Hz", "125Hz", "160Hz", "200Hz", "250Hz", "315Hz", "400Hz", "500Hz",
+    "Flat",
+    "20.0Hz",
+    "25.0Hz",
+    "31.5Hz",
+    "40Hz",
+    "50Hz",
+    "63Hz",
+    "80Hz",
+    "100Hz",
+    "125Hz",
+    "160Hz",
+    "200Hz",
+    "250Hz",
+    "315Hz",
+    "400Hz",
+    "500Hz",
 ]
 
 _COMP_RATIOS = [
-    "1.00:1", "1.12:1", "1.25:1", "1.40:1", "1.60:1", "1.80:1", "2.00:1",
-    "2.50:1", "3.20:1", "4.00:1", "5.60:1", "8.00:1", "16.0:1", "Inf:1",
+    "1.00:1",
+    "1.12:1",
+    "1.25:1",
+    "1.40:1",
+    "1.60:1",
+    "1.80:1",
+    "2.00:1",
+    "2.50:1",
+    "3.20:1",
+    "4.00:1",
+    "5.60:1",
+    "8.00:1",
+    "16.0:1",
+    "Inf:1",
 ]
 
 _RELEASE_MS = [
-    50, 60, 80, 100, 130, 160, 200, 250, 320, 400, 500,
-    640, 800, 1000, 1250, 1600, 2000, 2500, 3200, 4000, 5000,
+    50,
+    60,
+    80,
+    100,
+    130,
+    160,
+    200,
+    250,
+    320,
+    400,
+    500,
+    640,
+    800,
+    1000,
+    1250,
+    1600,
+    2000,
+    2500,
+    3200,
+    4000,
+    5000,
 ]
 
 
@@ -55,14 +100,17 @@ def _fmt_release(v: int) -> str:
     return f"{ms}ms"
 
 
-def _fmt_ns_level(v: int) -> str:       # Gate:     0–96  → -96dB…0dB
+def _fmt_ns_level(v: int) -> str:  # Gate:     0–96  → -96dB…0dB
     return f"{v - 96}dB"
+
 
 def _fmt_ns_adp_level(v: int) -> str:  # Adaptive: 0–9   → "0"…"9"
     return str(v)
 
+
 def _fmt_ns_exp_level(v: int) -> str:  # Expander: 39–99 → -60dB…0dB
     return f"{v - 99}dB"
+
 
 def _fmt_ns_exp_release(v: int) -> str:  # Expander: 0–100 → 0ms…4000ms
     return f"{v * 40}ms"
@@ -82,8 +130,9 @@ def _fmt_post_gain(v: int) -> str:
 
 # ── Main panel ────────────────────────────────────────────────────────────────
 
+
 class MicFxPanel(QWidget):
-    def __init__(self, bridge: "BridgeCast", parent: QWidget | None = None) -> None:
+    def __init__(self, bridge: BridgeCast, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self._bridge = bridge
 
@@ -126,9 +175,16 @@ class MicFxPanel(QWidget):
         lay.setContentsMargins(10, 6, 10, 10)
         lay.setSpacing(6)
         lay.addWidget(ParamToggle("Enable", "mic_low_cut", self._bridge))
-        lay.addWidget(LabeledSlider(
-            "FREQUENCY", "mic_low_cut_freq", self._bridge, 0, 15, _fmt_low_cut,
-        ))
+        lay.addWidget(
+            LabeledSlider(
+                "FREQUENCY",
+                "mic_low_cut_freq",
+                self._bridge,
+                0,
+                15,
+                _fmt_low_cut,
+            )
+        )
         lay.addStretch()
         return grp
 
@@ -140,9 +196,16 @@ class MicFxPanel(QWidget):
         lay.setContentsMargins(10, 6, 10, 10)
         lay.setSpacing(6)
         lay.addWidget(ParamToggle("Enable", "mic_de_esser", self._bridge))
-        lay.addWidget(LabeledSlider(
-            "DEPTH", "mic_de_esser_depth", self._bridge, 0, 9, lambda v: str(v + 1),
-        ))
+        lay.addWidget(
+            LabeledSlider(
+                "DEPTH",
+                "mic_de_esser_depth",
+                self._bridge,
+                0,
+                9,
+                lambda v: str(v + 1),
+            )
+        )
         lay.addStretch()
         return grp
 
@@ -157,15 +220,17 @@ class MicFxPanel(QWidget):
         lay.addWidget(ParamToggle("Enable", "mic_ns", self._bridge))
 
         type_cap = QLabel("TYPE")
-        type_cap.setStyleSheet("font-size: 10px; color: #7a7a82; letter-spacing: 0.04em; background-color: transparent;")
+        type_cap.setStyleSheet(
+            "font-size: 10px; color: #7a7a82; letter-spacing: 0.04em; background-color: transparent;"
+        )
         lay.addWidget(type_cap)
 
         type_row = QHBoxLayout()
-        self._rb_ns_gate     = QRadioButton("Gate")
+        self._rb_ns_gate = QRadioButton("Gate")
         self._rb_ns_adaptive = QRadioButton("Adaptive")
         self._rb_ns_expander = QRadioButton("Expander")
         ns_bg = QButtonGroup(self)
-        ns_bg.addButton(self._rb_ns_gate,     0)
+        ns_bg.addButton(self._rb_ns_gate, 0)
         ns_bg.addButton(self._rb_ns_adaptive, 1)
         ns_bg.addButton(self._rb_ns_expander, 2)
         ns_bg.idToggled.connect(self._on_ns_type_selected)
@@ -181,9 +246,15 @@ class MicFxPanel(QWidget):
         gate_lay = QVBoxLayout(self._ns_gate_w)
         gate_lay.setContentsMargins(0, 0, 0, 0)
         gate_lay.setSpacing(4)
-        gate_lay.addWidget(LabeledSlider("LEVEL",   "mic_ns_level",   self._bridge, 0,    0x60, _fmt_ns_level))
-        gate_lay.addWidget(LabeledSlider("ATTACK",  "mic_ns_attack",  self._bridge, 0,    0x0A, _fmt_attack))
-        gate_lay.addWidget(LabeledSlider("RELEASE", "mic_ns_release", self._bridge, 0,    0x14, _fmt_release))
+        gate_lay.addWidget(
+            LabeledSlider("LEVEL", "mic_ns_level", self._bridge, 0, 0x60, _fmt_ns_level)
+        )
+        gate_lay.addWidget(
+            LabeledSlider("ATTACK", "mic_ns_attack", self._bridge, 0, 0x0A, _fmt_attack)
+        )
+        gate_lay.addWidget(
+            LabeledSlider("RELEASE", "mic_ns_release", self._bridge, 0, 0x14, _fmt_release)
+        )
         lay.addWidget(self._ns_gate_w)
 
         # Adaptive sliders
@@ -191,7 +262,9 @@ class MicFxPanel(QWidget):
         adp_lay = QVBoxLayout(self._ns_adp_w)
         adp_lay.setContentsMargins(0, 0, 0, 0)
         adp_lay.setSpacing(4)
-        adp_lay.addWidget(LabeledSlider("LEVEL", "mic_ns_adp_level", self._bridge, 0, 9, _fmt_ns_adp_level))
+        adp_lay.addWidget(
+            LabeledSlider("LEVEL", "mic_ns_adp_level", self._bridge, 0, 9, _fmt_ns_adp_level)
+        )
         lay.addWidget(self._ns_adp_w)
 
         # Expander sliders
@@ -199,8 +272,14 @@ class MicFxPanel(QWidget):
         exp_lay = QVBoxLayout(self._ns_exp_w)
         exp_lay.setContentsMargins(0, 0, 0, 0)
         exp_lay.setSpacing(4)
-        exp_lay.addWidget(LabeledSlider("LEVEL",   "mic_ns_exp_level",   self._bridge, 0x27, 0x63, _fmt_ns_exp_level))
-        exp_lay.addWidget(LabeledSlider("RELEASE", "mic_ns_exp_release", self._bridge, 0,    0x64, _fmt_ns_exp_release))
+        exp_lay.addWidget(
+            LabeledSlider("LEVEL", "mic_ns_exp_level", self._bridge, 0x27, 0x63, _fmt_ns_exp_level)
+        )
+        exp_lay.addWidget(
+            LabeledSlider(
+                "RELEASE", "mic_ns_exp_release", self._bridge, 0, 0x64, _fmt_ns_exp_release
+            )
+        )
         lay.addWidget(self._ns_exp_w)
 
         # Set initial state
@@ -268,11 +347,25 @@ class MicFxPanel(QWidget):
         leg_lay = QVBoxLayout(self._comp_legacy_w)
         leg_lay.setContentsMargins(0, 0, 0, 0)
         leg_lay.setSpacing(4)
-        leg_lay.addWidget(LabeledSlider("THRESHOLD", "mic_compressor_threshold", self._bridge, 0, 0x10, _fmt_threshold))
-        leg_lay.addWidget(LabeledSlider("RATIO",     "mic_compressor_ratio",     self._bridge, 0, 0x0D, _fmt_ratio))
-        leg_lay.addWidget(LabeledSlider("ATTACK",    "mic_compressor_attack",    self._bridge, 0, 0x0A, _fmt_attack))
-        leg_lay.addWidget(LabeledSlider("RELEASE",   "mic_compressor_release",   self._bridge, 0, 0x14, _fmt_release))
-        leg_lay.addWidget(LabeledSlider("POST GAIN", "mic_compressor_post_gain", self._bridge, 0, 0x1E, _fmt_post_gain))
+        leg_lay.addWidget(
+            LabeledSlider(
+                "THRESHOLD", "mic_compressor_threshold", self._bridge, 0, 0x10, _fmt_threshold
+            )
+        )
+        leg_lay.addWidget(
+            LabeledSlider("RATIO", "mic_compressor_ratio", self._bridge, 0, 0x0D, _fmt_ratio)
+        )
+        leg_lay.addWidget(
+            LabeledSlider("ATTACK", "mic_compressor_attack", self._bridge, 0, 0x0A, _fmt_attack)
+        )
+        leg_lay.addWidget(
+            LabeledSlider("RELEASE", "mic_compressor_release", self._bridge, 0, 0x14, _fmt_release)
+        )
+        leg_lay.addWidget(
+            LabeledSlider(
+                "POST GAIN", "mic_compressor_post_gain", self._bridge, 0, 0x1E, _fmt_post_gain
+            )
+        )
         lay.addWidget(self._comp_legacy_w)
 
         # Modern sliders
@@ -280,9 +373,13 @@ class MicFxPanel(QWidget):
         mod_lay = QVBoxLayout(self._comp_modern_w)
         mod_lay.setContentsMargins(0, 0, 0, 0)
         mod_lay.setSpacing(4)
-        mod_lay.addWidget(LabeledSlider("AMOUNT",         "mic_comp_mod_amount", self._bridge, 0,    0x7F, str))
-        mod_lay.addWidget(LabeledSlider("PEAK REDUCTION", "mic_comp_mod_peak",   self._bridge, 0,    100,  str))
-        mod_lay.addWidget(LabeledSlider("GAIN",           "mic_comp_mod_gain",   self._bridge, 0,    100,  str))
+        mod_lay.addWidget(
+            LabeledSlider("AMOUNT", "mic_comp_mod_amount", self._bridge, 0, 0x7F, str)
+        )
+        mod_lay.addWidget(
+            LabeledSlider("PEAK REDUCTION", "mic_comp_mod_peak", self._bridge, 0, 100, str)
+        )
+        mod_lay.addWidget(LabeledSlider("GAIN", "mic_comp_mod_gain", self._bridge, 0, 100, str))
         lay.addWidget(self._comp_modern_w)
 
         # Set initial state

@@ -14,6 +14,7 @@ File: ``~/.config/bridgemix/routing.json`` ::
       }
     }
 """
+
 from __future__ import annotations
 
 import json
