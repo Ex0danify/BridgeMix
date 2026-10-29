@@ -58,6 +58,26 @@ jobs:
           iscc "/DAppVersion=$version" "/DSourceDir=$PWD\dist\BridgeMix" "/DOutputDir=$PWD\out" packaging/windows/bridgemix.iss
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           Compress-Archive -Path dist/BridgeMix -DestinationPath "out/BridgeMix-$version-windows-x64-portable.zip"
+      # The installer installs once; the app then runs from the install folder, not from the build output.
+      - name: Install and smoke-test the installed app
+        shell: pwsh
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: |
+          $ErrorActionPreference = "Stop"
+          $dir = Join-Path $env:RUNNER_TEMP "bridgemix-install"
+          $installer = Get-ChildItem out/*-setup.exe | Select-Object -First 1
+          Start-Process -FilePath $installer.FullName -ArgumentList "/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART", "/DIR=$dir" -Wait
+          if (-not (Test-Path "$dir/BridgeMix.exe")) { throw "The installer did not install BridgeMix.exe" }
+          $report = Join-Path $env:RUNNER_TEMP "smoke-installed.txt"
+          $p = Start-Process -FilePath "$dir/BridgeMix.exe" -ArgumentList "--smoke-test", "--smoke-report", $report -PassThru
+          if (-not $p.WaitForExit(120000)) {
+            $p.Kill()
+            throw "Smoke test of the installed app did not finish within 2 minutes"
+          }
+          if (Test-Path $report) { Get-Content $report }
+          if ($p.ExitCode -ne 0) { throw "Smoke test of the installed app failed with exit code $($p.ExitCode)" }
+          if (-not (Test-Path $report)) { throw "Smoke test of the installed app wrote no report" }
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: ${{ inputs.upload }}
         with:

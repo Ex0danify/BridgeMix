@@ -61,10 +61,6 @@ jobs:
   windows-build:
     uses: ./.github/workflows/build-windows.yml
 
-  # TEMPORARY: exercise the macOS build on this PR; removed before merge.
-  macos-build:
-    uses: ./.github/workflows/build-macos.yml
-
   # The one status to require in the branch protection.
   ci-pass:
     if: always()
