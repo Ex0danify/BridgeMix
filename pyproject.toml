@@ -54,6 +54,7 @@ namespaces = false
 # key applies to any package that has one, so new built-ins need no edit here.
 [tool.setuptools.package-data]
 "*" = ["plugin.toml"]
+"bridgemix.device.protocol" = ["bridgecast.json"]
 
 [project.scripts]
 bridgemix = "bridgemix.__main__:main"

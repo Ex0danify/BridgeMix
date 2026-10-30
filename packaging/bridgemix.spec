@@ -20,6 +20,12 @@ datas = [
 ]
 datas += copy_metadata("fastapi") + copy_metadata("uvicorn")
 datas += [(str(root / "assets" / "icon.svg"), "assets")]
+datas += [
+    (
+        str(root / "src" / "bridgemix" / "device" / "protocol" / "bridgecast.json"),
+        "bridgemix/device/protocol",
+    )
+]
 
 # Not needed at runtime and large.
 excludes = ["tkinter", "matplotlib", "scipy", "pandas", "IPython", "pytest"]
